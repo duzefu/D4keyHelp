@@ -202,11 +202,14 @@ GuiEscape:
 ExitApp
 return
 
-; 在#If WinActive("ahk_class Diablo IV Main Window Class")下添加Tab键处理
+; 在#If WinActive("ahk_class Diablo IV Main Window Class")下修改Tab键处理
 Tab::
     if (!isRunning) {
+        Send, {Tab}  ; 如果脚本未运行,直接发送Tab键
         return
     }
+    
+    Send, {Tab}  ; 首先发送Tab键,保持游戏原有功能
     
     isPaused := !isPaused
     
