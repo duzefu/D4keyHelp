@@ -11,6 +11,7 @@ Process, Priority, , High  ; 设置进程优先级为高
 global isRunning := false
 global counter := 0
 global isPaused := false  ; 添加暂停状态标志
+global previouslyPaused := false  ; 添加新的状态变量来记住之前的暂停状态
 
 ; 创建GUI
 Gui, +AlwaysOnTop
@@ -61,6 +62,75 @@ Gui, Add, StatusBar,, 就绪
 Gui, Show, w480 h500, 暗黑4助手
 
 ; 只在暗黑破坏神4窗口活动时启用以下热键和功能
+#If  ; 清除之前的条件
+
+; 添加窗口切换事件处理
+OnWindowChange() {
+    global isRunning, isPaused, previouslyPaused
+    
+    if (!WinActive("ahk_class Diablo IV Main Window Class")) {
+        if (isRunning) {
+            previouslyPaused := isPaused  ; 保存当前的暂停状态
+            if (!isPaused) {  ; 如果当前没有暂停，则暂停宏
+                ; 暂停所有定时器
+                Loop, 4 {
+                    GuiControlGet, enabled,, Skill%A_Index%Enable
+                    if (enabled) {
+                        SetTimer, PressSkill%A_Index%, Off
+                    }
+                }
+                
+                GuiControlGet, leftEnabled,, LeftClickEnable
+                if (leftEnabled) {
+                    SetTimer, PressLeftClick, Off
+                }
+                
+                GuiControlGet, rightEnabled,, RightClickEnable
+                if (rightEnabled) {
+                    SetTimer, PressRightClick, Off
+                }
+                
+                isPaused := true
+                GuiControl,, StatusText, 状态: 已暂停(窗口切换)
+                SB_SetText("宏已暂停 - 窗口未激活")
+            }
+        }
+    } else if (isRunning && isPaused && !previouslyPaused) {
+        ; 当切换回暗黑4窗口，且之前不是手动暂停的状态，则恢复运行
+        ; 恢复所有启用的定时器
+        Loop, 4 {
+            GuiControlGet, enabled,, Skill%A_Index%Enable
+            if (enabled) {
+                GuiControlGet, interval,, Skill%A_Index%Interval
+                SetTimer, PressSkill%A_Index%, %interval%
+            }
+        }
+        
+        GuiControlGet, leftEnabled,, LeftClickEnable
+        if (leftEnabled) {
+            GuiControlGet, leftInterval,, LeftClickInterval
+            SetTimer, PressLeftClick, %leftInterval%
+        }
+        
+        GuiControlGet, rightEnabled,, RightClickEnable
+        if (rightEnabled) {
+            GuiControlGet, rightInterval,, RightClickInterval
+            SetTimer, PressRightClick, %rightInterval%
+        }
+        
+        isPaused := false
+        GuiControl,, StatusText, 状态: 运行中
+        SB_SetText("宏已恢复 - 窗口已激活")
+    }
+}
+
+; 设置定时器来检查窗口状态
+SetTimer, CheckWindow, 100
+
+CheckWindow:
+OnWindowChange()
+return
+
 #If WinActive("ahk_class Diablo IV Main Window Class")
 
 ; 当按下F1时触发宏
