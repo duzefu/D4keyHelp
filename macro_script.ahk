@@ -10,6 +10,7 @@ Process, Priority, , High  ; 设置进程优先级为高
 ; 定义标志变量和计数器
 global isRunning := false
 global counter := 0
+global isPaused := false  ; 添加暂停状态标志
 
 ; 创建GUI
 Gui, +AlwaysOnTop
@@ -67,6 +68,7 @@ F1::
 ToggleMacro:
     isRunning := !isRunning  ; 切换运行状态
     if (isRunning) {
+        isPaused := false  ; 重置暂停状态
         ; 为每个启用的按键设置定时器
         Loop, 4 
         {
@@ -93,6 +95,7 @@ ToggleMacro:
         GuiControl,, StatusText, 状态: 运行中
         SB_SetText("宏已启动")
     } else {
+        isPaused := false  ; 重置暂停状态
         ; 关闭所有定时器
         Loop, 4 {
             SetTimer, PressSkill%A_Index%, Off
@@ -120,7 +123,7 @@ SendKeys() {
 
 ; 按键发送函数
 PressSkill1:
-    if (isRunning) {
+    if (isRunning && !isPaused) {
         GuiControlGet, key,, Skill1Key
         if (key != "") {
             Send, {%key%}
@@ -129,7 +132,7 @@ PressSkill1:
 return
 
 PressSkill2:
-    if (isRunning) {
+    if (isRunning && !isPaused) {
         GuiControlGet, key,, Skill2Key
         if (key != "") {
             Send, {%key%}
@@ -138,7 +141,7 @@ PressSkill2:
 return
 
 PressSkill3:
-    if (isRunning) {
+    if (isRunning && !isPaused) {
         GuiControlGet, key,, Skill3Key
         if (key != "") {
             Send, {%key%}
@@ -147,7 +150,7 @@ PressSkill3:
 return
 
 PressSkill4:
-    if (isRunning) {
+    if (isRunning && !isPaused) {
         GuiControlGet, key,, Skill4Key
         if (key != "") {
             Send, {%key%}
@@ -156,13 +159,13 @@ PressSkill4:
 return
 
 PressLeftClick:
-    if (isRunning) {
+    if (isRunning && !isPaused) {
         Click
     }
 return
 
 PressRightClick:
-    if (isRunning) {
+    if (isRunning && !isPaused) {
         Click right
     }
 return
@@ -197,4 +200,60 @@ return
 GuiClose:
 GuiEscape:
 ExitApp
+return
+
+; 在#If WinActive("ahk_class Diablo IV Main Window Class")下添加Tab键处理
+Tab::
+    if (!isRunning) {
+        return
+    }
+    
+    isPaused := !isPaused
+    
+    if (isPaused) {
+        ; 暂停所有定时器
+        Loop, 4 {
+            GuiControlGet, enabled,, Skill%A_Index%Enable
+            if (enabled) {
+                SetTimer, PressSkill%A_Index%, Off
+            }
+        }
+        
+        GuiControlGet, leftEnabled,, LeftClickEnable
+        if (leftEnabled) {
+            SetTimer, PressLeftClick, Off
+        }
+        
+        GuiControlGet, rightEnabled,, RightClickEnable
+        if (rightEnabled) {
+            SetTimer, PressRightClick, Off
+        }
+        
+        GuiControl,, StatusText, 状态: 已暂停
+        SB_SetText("宏已暂停")
+    } else {
+        ; 恢复所有启用的定时器
+        Loop, 4 {
+            GuiControlGet, enabled,, Skill%A_Index%Enable
+            if (enabled) {
+                GuiControlGet, interval,, Skill%A_Index%Interval
+                SetTimer, PressSkill%A_Index%, %interval%
+            }
+        }
+        
+        GuiControlGet, leftEnabled,, LeftClickEnable
+        if (leftEnabled) {
+            GuiControlGet, leftInterval,, LeftClickInterval
+            SetTimer, PressLeftClick, %leftInterval%
+        }
+        
+        GuiControlGet, rightEnabled,, RightClickEnable
+        if (rightEnabled) {
+            GuiControlGet, rightInterval,, RightClickInterval
+            SetTimer, PressRightClick, %rightInterval%
+        }
+        
+        GuiControl,, StatusText, 状态: 运行中
+        SB_SetText("宏已继续")
+    }
 return
