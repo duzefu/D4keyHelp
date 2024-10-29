@@ -27,7 +27,7 @@ Process, Priority, , High
 
 VERSION:=230222
 MainWindowW:=900
-MainWindowH:=570
+MainWindowH:=630
 CompactWindowW:=551
 TitleBarHight:=25
 ;@Ahk2Exe-Obey U_Y, U_Y := A_YYYY
@@ -251,6 +251,13 @@ GuiCreate(){
         Gui Add, Text, vskillset%currentTab%potiontext x+10 yp+3, 执行间隔（毫秒）：
         Gui Add, Edit, vskillset%currentTab%potionedit x+5 yp-3 w60 Number
         Gui Add, Updown, vskillset%currentTab%potionupdown Range200-30000, % others[currentTab].potioninterval
+
+        ; 修复后的代码
+        ; Gui Add, Checkbox, % "xs+20 yp+35 Checked" others[currentTab].keepmoving " vskillset" currentTab "keepmovingckbox1 gSetKeepMoving", 卡移速：
+        ; Gui Add, Hotkey, x+5 yp-3 w70 Limit14 vskillset%currentTab%keepmovinghk1 gSetKeepMoving, % others[currentTab].keepmovinghk
+        Gui Add, Text, xs+20 yp+35, 卡移速快捷键：
+        Gui Add, Hotkey, % "x+5 yp-3 w100 vskillset" currentTab "keepmovinghkbox gSetKeepMoving", % others[currentTab].keepmovinghk
+        Gui Add, Checkbox, % "x+15 yp+3 Checked" others[currentTab].keepmoving " vskillset" currentTab "keepmovingckbox2 gSetKeepMoving", 启用卡移速
     }
     Gui Tab
     GuiControl, Choose, ActiveTab, % currentProfile
@@ -492,10 +499,13 @@ ReadCfgFile(cfgFileName, ByRef tabs, ByRef combats, ByRef others, ByRef generals
             IniRead, pfusq, %cfgFileName%, %cSection%, useskillqueue, 0
             IniRead, pfusqiv, %cfgFileName%, %cSection%, useskillqueueinterval, 200
             IniRead, pfasm, %cfgFileName%, %cSection%, autostartmarco, 0
+            IniRead, pfkm, %cfgFileName%, %cSection%, keepmoving, 0  ; 是否启用卡移速
+            IniRead, pfkmhk, %cfgFileName%, %cSection%, keepmovinghk  ; 卡移速快捷键
             tos:={"profilemethod":pfmd, "profilehotkey":pfhk, "movingmethod":pfmv, "movinginterval":pfmi
             , "potionmethod":pfpo, "potioninterval":pfpi, "lazymode":pflm
             , "enablequickpause":pfqp, "quickpausemethod1":pfqpm1, "quickpausemethod2":pfqpm2, "quickpausemethod3":pfqpm3
-            , "quickpausedelay":pfqpdy, "useskillqueue":pfusq, "useskillqueueinterval":pfusqiv, "autostartmarco":pfasm}
+            , "quickpausedelay":pfqpdy, "useskillqueue":pfusq, "useskillqueueinterval":pfusqiv, "autostartmarco":pfasm
+            , "keepmoving":pfkm, "keepmovinghk":pfkmhk}  ; 添加新的配置项
             others.Push(tos)
         }
 
@@ -669,6 +679,10 @@ SaveCfgFile(cfgFileName, tabs, currentProfile, safezone, VERSION){
         IniWrite, % skillset%cSection%useskillqueueedit, %cfgFileName%, %nSction%, useskillqueueinterval
         GuiControlGet, skillset%cSection%autostartmarcockbox
         IniWrite, % skillset%cSection%autostartmarcockbox, %cfgFileName%, %nSction%, autostartmarco
+        GuiControlGet, skillset%cSection%keepmovingckbox
+        IniWrite, % skillset%cSection%keepmovingckbox, %cfgFileName%, %nSction%, keepmoving
+        GuiControlGet, skillset%cSection%keepmovinghkbox  
+        IniWrite, % skillset%cSection%keepmovinghkbox, %cfgFileName%, %nSction%, keepmovinghk
     }
     Return
 }
@@ -3689,4 +3703,62 @@ MDMF_Enum(HMON := "") {
             Return False
     }
     Return (HMON = "") ? Monitors : Monitors.HasKey(HMON) ? Monitors[HMON] : False
+}
+
+/*
+设置卡移速相关的控件动画
+参数：
+    无
+返回：
+    无
+*/
+SetKeepMoving(){
+    local
+    Global currentProfile, keepMovingHK  ; 添加 keepMovingHK 全局变量
+    GuiControlGet, skillset%currentProfile%keepmovingckbox2
+    GuiControlGet, skillset%currentProfile%keepmovinghkbox  ; 获取当前热键
+    
+    ; 先解除旧的热键绑定
+    if (keepMovingHK) {
+        Hotkey, % "*" keepMovingHK, keepMoving, Off
+    }
+    
+    if skillset%currentProfile%keepmovingckbox2
+    {
+        GuiControl, Enable, skillset%currentProfile%keepmovinghkbox
+        if !skillset%currentProfile%keepmovinghkbox
+        {
+            GuiControl,, skillset%currentProfile%keepmovinghkbox, Space
+        }
+        ; 绑定新的热键
+        keepMovingHK := skillset%currentProfile%keepmovinghkbox
+        Hotkey, % "*" keepMovingHK, keepMoving, On
+    }
+    Else
+    {
+        GuiControl, Disable, skillset%currentProfile%keepmovinghkbox
+        ; 解除热键绑定
+        if (keepMovingHK) {
+            Hotkey, % "*" keepMovingHK, keepMoving, Off
+        }
+        keepMovingHK := ""
+    }
+    Return
+}
+
+; 修改 keepMoving 标签，移除对宏状态的检查
+keepMoving:
+    ; 检查游戏窗口是否激活
+    ; IfWinActive, ahk_class Diablo IV Main Window Class
+    ; {
+        SendKeys() ;
+    ; }
+Return
+
+SendKeys() {
+    Send, r ;
+    Sleep, 5
+    Send, {Space} ;
+    Sleep, 500
+    Send, r ;
 }
