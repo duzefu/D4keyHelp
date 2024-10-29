@@ -61,7 +61,7 @@ Loop, Parse, % generals.safezone, CSV
 {
     safezone[A_LoopField]:=1
 }
-#If WinActive((d3only)?"ahk_class D3 Main Window Class":"A")
+#If WinActive((d3only)?"ahk_class Diablo IV Main Window Class":"A")
 gameGamma:=(generals.gamegamma>=0.5 and generals.gamegamma<=1.5)? generals.gamegamma:1
 buffpercent:=(generals.buffpercent>=0 and generals.buffpercent<=1)? generals.buffpercent:0.05
 ; ==============================================================================================================
@@ -684,9 +684,9 @@ SaveCfgFile(cfgFileName, tabs, currentProfile, safezone, VERSION){
     [x坐标，y坐标]
 */
 getSkillButtonBuffPos(D3W, D3H, buttonID, percent){
-    static x:=[1288, 1377, 1465, 1554, 1647, 1734]
+    static x:=[1486, 1576, 1665, 1755, 1849, 1937]
     static w:=63
-    y:=1328*D3H/1440
+    y:=1358*D3H/1440
     Return [Round(D3W/2-(3440/2-x[buttonID]-percent*w)*D3H/1440), Round(y)]
 }
 
@@ -747,7 +747,7 @@ skillKey(currentProfile, nskill, D3W, D3H, forceStandingKey, useSkillQueue){
             magicXY:=getSkillButtonBuffPos(D3W, D3H, A_Index, buffpercent)
             crgb:=getPixelRGB(magicXY)
             ; 如果已激活，直接返回
-            if (crgb[2]>=95) {
+            if (crgb[2]<95) {
                 Return
             }
         }
@@ -810,7 +810,7 @@ skillKey(currentProfile, nskill, D3W, D3H, forceStandingKey, useSkillQueue){
                 magicXY:=getSkillButtonBuffPos(D3W, D3H, nskill, buffpercent)
                 crgb:=getPixelRGB(magicXY)
                 ; 具体判断是否需要补buff
-                if (crgb[2]<95)
+                if (crgb[2]>=95)
                 {
                     switch nskill
                     {
@@ -2208,7 +2208,7 @@ isKanaiCubeOpen(D3W, D3H){
         else
         {
             ; 检测是否是非英文客户端，设置Y轴位置偏移
-            WinGetTitle, gameWindowTitle, ahk_class D3 Main Window Class
+            WinGetTitle, gameWindowTitle, ahk_class Diablo IV Main Window Class
             upgradeYOffset:=(gameWindowTitle="Diablo III")? 0:-22
             cc1:=getPixelRGB([Round(799*D3H/1440),Round((406+upgradeYOffset)*D3H/1440)])
             cc2:=getPixelRGB([Round(795*D3H/1440),Round((592+upgradeYOffset)*D3H/1440)])
@@ -2373,7 +2373,7 @@ getGameXYonScreen(GameX, GameY){
     VarSetCapacity(POINT, 8)
     NumPut(GameX, POINT, 0, "Int")
     NumPut(GameY, POINT, 4, "Int")
-    DllCall("ClientToScreen", "ptr", WinExist("ahk_class D3 Main Window Class"), "ptr", &POINT)
+    DllCall("ClientToScreen", "ptr", WinExist("ahk_class Diablo IV Main Window Class"), "ptr", &POINT)
     Return [NumGet(POINT, 0, "Int"), NumGet(POINT, 4, "Int")]
 }
 
@@ -2391,7 +2391,7 @@ getGameResulution(ByRef D3W, ByRef D3H){
     if (gameResolution="Auto")
     {
         VarSetCapacity(rect, 16)
-        DllCall("GetClientRect", "ptr", WinExist("ahk_class D3 Main Window Class"), "ptr", &rect)
+        DllCall("GetClientRect", "ptr", WinExist("ahk_class Diablo IV Main Window Class"), "ptr", &rect)
         D3W:=NumGet(rect, 8, "Int")
         D3H:=NumGet(rect, 12, "Int")
         if (D3W*D3H=0 and d3only){
