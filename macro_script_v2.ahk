@@ -14,6 +14,7 @@ global statusText := ""
 global skillControls := Map()
 global mouseControls := {}
 global statusBar := ""
+global shiftEnabled := false
 
 ; 调试输出函数
 DebugLog(message) {
@@ -41,15 +42,18 @@ myGui.AddText("x30 y100 w300 h20", "提示：仅在暗黑破坏神4窗口活动�
 ; 添加技能设置区域
 myGui.AddGroupBox("x10 y140 w460 h320", "键设置")
 
+; 添加Shift键勾选框
+myGui.AddCheckbox("x30 y170 w100 h20", "按住Shift").OnEvent("Click", ToggleShift)
+
 ; 添加列标题
-myGui.AddText("x30 y170 w60 h20", "按键")
-myGui.AddText("x130 y170 w60 h20", "启用")
-myGui.AddText("x200 y170 w120 h20", "间隔(毫秒)")
+myGui.AddText("x30 y200 w60 h20", "按键")
+myGui.AddText("x130 y200 w60 h20", "启用")
+myGui.AddText("x200 y200 w120 h20", "间隔(毫秒)")
 
 ; 技能1-4设置
 skillControls := Map()
 Loop 4 {
-    yPos := 200 + (A_Index-1) * 35
+    yPos := 230 + (A_Index-1) * 35
     myGui.AddText("x30 y" yPos " w60 h20", "技能" A_Index ":")
     skillControls[A_Index] := {
         key: myGui.AddHotkey("x90 y" yPos " w35 h20", A_Index),
@@ -61,16 +65,16 @@ Loop 4 {
 ; 鼠标按键设置
 mouseControls := {
     left: {
-        enable: myGui.AddCheckbox("x130 y340 w60 h20", "启用"),
-        interval: myGui.AddEdit("x200 y340 w60 h20", "80")
+        enable: myGui.AddCheckbox("x130 y370 w60 h20", "启用"),
+        interval: myGui.AddEdit("x200 y370 w60 h20", "80")
     },
     right: {
-        enable: myGui.AddCheckbox("x130 y375 w60 h20", "启用"),
-        interval: myGui.AddEdit("x200 y375 w60 h20", "300")
+        enable: myGui.AddCheckbox("x130 y405 w60 h20", "启用"),
+        interval: myGui.AddEdit("x200 y405 w60 h20", "300")
     }
 }
-myGui.AddText("x30 y340 w60 h20", "左键:")
-myGui.AddText("x30 y375 w60 h20", "右键:")
+myGui.AddText("x30 y370 w60 h20", "左键:")
+myGui.AddText("x30 y405 w60 h20", "右键:")
 
 ; 添加保存按钮
 myGui.AddButton("x30 y420 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
@@ -84,7 +88,7 @@ myGui.Show("w480 h500")
 ; 加载设置
 LoadSettings()
 
-; 窗口切换检查函数
+; 窗口切换检查函��
 CheckWindow() {
     static lastState := false
     currentState := WinActive("ahk_class Diablo IV Main Window Class")
@@ -148,21 +152,44 @@ StopAllTimers() {
 
 ; 按键功能实现
 PressSkill(skillNum) {
-    if (isRunning && !isPaused && skillControls[skillNum].enable.Value = 1) {  ; 添加额外检查
+    if (isRunning && !isPaused && skillControls[skillNum].enable.Value = 1) {
         key := skillControls[skillNum].key.Value
-        if key != ""
-            Send "{" key "}"
+        if key != "" {
+            if (shiftEnabled) {
+                Send "{Shift down}"
+                Sleep 10
+                Send "{" key "}"
+                Sleep 10
+                Send "{Shift up}"
+            } else {
+                Send "{" key "}"
+            }
+        }
     }
 }
 
 PressLeftClick() {
-    if (isRunning && !isPaused && mouseControls.left.enable.Value = 1)  ; 添加额外检查
-        Click
+    if (isRunning && !isPaused && mouseControls.left.enable.Value = 1) {
+        if (shiftEnabled) {
+            Send "{Shift down}"
+            Click
+            Send "{Shift up}"
+        } else {
+            Click
+        }
+    }
 }
 
 PressRightClick() {
-    if (isRunning && !isPaused && mouseControls.right.enable.Value = 1)  ; 添加额外检查
-        Click "right"
+    if (isRunning && !isPaused && mouseControls.right.enable.Value = 1) {
+        if (shiftEnabled) {
+            Send "{Shift down}"
+            Click "right"
+            Send "{Shift up}"
+        } else {
+            Click "right"
+        }
+    }
 }
 
 ; 卡移速功能
@@ -274,4 +301,10 @@ LoadSettings() {
         mouseControls.right.enable.Value := IniRead(settingsFile, "Mouse", "RightClickEnable", 0)
         mouseControls.right.interval.Value := IniRead(settingsFile, "Mouse", "RightClickInterval", 300)
     }
+}
+
+; 切换Shift键勾选框
+ToggleShift(*) {
+    global shiftEnabled
+    shiftEnabled := !shiftEnabled
 } 
