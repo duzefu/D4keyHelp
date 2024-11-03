@@ -28,7 +28,7 @@ DebugLog(message) {
 }
 
 ; 创建主窗口
-myGui := Gui("+AlwaysOnTop", "暗黑4助手")
+myGui := Gui("", "暗黑4助手")
 myGui.BackColor := "FFFFFF"
 myGui.SetFont("s10", "Microsoft YaHei UI")
 
@@ -88,7 +88,7 @@ myGui.Show("w480 h500")
 ; 加载设置
 LoadSettings()
 
-; 窗口切换检查函��
+; 窗口切换检查函
 CheckWindow() {
     static lastState := false
     currentState := WinActive("ahk_class Diablo IV Main Window Class")
