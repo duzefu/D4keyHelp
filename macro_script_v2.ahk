@@ -9,6 +9,11 @@ global isRunning := false
 global counter := 0
 global isPaused := false
 global previouslyPaused := false
+global myGui := ""
+global statusText := ""
+global skillControls := Map()
+global mouseControls := {}
+global statusBar := ""
 
 ; 调试输出函数
 DebugLog(message) {
@@ -92,6 +97,8 @@ CheckWindow() {
 
 ; 窗口切换事件处理
 OnWindowChange() {
+    global isRunning, isPaused, previouslyPaused
+    
     if (!WinActive("ahk_class Diablo IV Main Window Class")) {
         if (isRunning) {
             previouslyPaused := isPaused
@@ -113,17 +120,19 @@ OnWindowChange() {
 ; 启动所有定时器
 StartAllTimers() {
     Loop 4 {
-        if skillControls[A_Index].enable.Value {
+        ; 只有当复选框被选中时才启动定时器
+        if (skillControls[A_Index].enable.Value = 1) {  ; 检查复选框的实际值
             interval := skillControls[A_Index].interval.Value
             SetTimer PressSkill.Bind(A_Index), interval
         }
     }
     
-    if mouseControls.left.enable.Value {
+    ; 只有当复选框被选中时才启动鼠标定时器
+    if (mouseControls.left.enable.Value = 1) {
         SetTimer PressLeftClick, mouseControls.left.interval.Value
     }
     
-    if mouseControls.right.enable.Value {
+    if (mouseControls.right.enable.Value = 1) {
         SetTimer PressRightClick, mouseControls.right.interval.Value
     }
 }
@@ -139,7 +148,7 @@ StopAllTimers() {
 
 ; 按键功能实现
 PressSkill(skillNum) {
-    if (isRunning && !isPaused) {
+    if (isRunning && !isPaused && skillControls[skillNum].enable.Value = 1) {  ; 添加额外检查
         key := skillControls[skillNum].key.Value
         if key != ""
             Send "{" key "}"
@@ -147,12 +156,12 @@ PressSkill(skillNum) {
 }
 
 PressLeftClick() {
-    if (isRunning && !isPaused)
+    if (isRunning && !isPaused && mouseControls.left.enable.Value = 1)  ; 添加额外检查
         Click
 }
 
 PressRightClick() {
-    if (isRunning && !isPaused)
+    if (isRunning && !isPaused && mouseControls.right.enable.Value = 1)  ; 添加额外检查
         Click "right"
 }
 
