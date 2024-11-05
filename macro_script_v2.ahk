@@ -143,11 +143,17 @@ StartAllTimers() {
 
 ; 停止所有定时器
 StopAllTimers() {
+    ; 确保每个技能定时器都被停止
     Loop 4 {
         SetTimer PressSkill.Bind(A_Index), 0
     }
+    
+    ; 停止鼠标定时器
     SetTimer PressLeftClick, 0
     SetTimer PressRightClick, 0
+    
+    ; 确保释放所有可能被按住的按键
+    Send "{Shift up}"  ; 确保Shift键被释放
 }
 
 ; 按键功能实现
@@ -251,17 +257,33 @@ Tab::{
 
 ; 宏切换功能
 ToggleMacro(*) {
-    global isRunning
+    global isRunning, isPaused
+    
+    ; 确保完全停止所有定时器
+    StopAllTimers()
+    
+    ; 切换运行状态
     isRunning := !isRunning
+    
     if isRunning {
-        global isPaused
+        ; 重置暂停状态
         isPaused := false
-        StartAllTimers()
-        statusText.Value := "状态: 运行中"
-        statusBar.Text := "宏已启动"
+        previouslyPaused := false
+        
+        ; 只有在暗黑4窗口激活时才启动定时器
+        if WinActive("ahk_class Diablo IV Main Window Class") {
+            StartAllTimers()
+            statusText.Value := "状态: 运行中"
+            statusBar.Text := "宏已启动"
+        } else {
+            isPaused := true
+            statusText.Value := "状态: 已暂停(窗口切换)"
+            statusBar.Text := "宏已暂停 - 窗口未激活"
+        }
     } else {
+        ; 确保重置所有状态
         isPaused := false
-        StopAllTimers()
+        previouslyPaused := false
         statusText.Value := "状态: 已停止"
         statusBar.Text := "宏已停止"
     }
