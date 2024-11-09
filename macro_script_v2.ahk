@@ -15,6 +15,7 @@ global skillControls := Map()
 global mouseControls := {}
 global statusBar := ""
 global shiftEnabled := false
+global utilityControls := {}
 
 ; 调试输出函数
 DebugLog(message) {
@@ -39,21 +40,21 @@ myGui.AddButton("x30 y65 w120 h30", "开始/停止(F1)").OnEvent("Click", Toggle
 myGui.AddText("x170 y70 w200 h20", "F3: 卡移速")
 myGui.AddText("x30 y100 w300 h20", "提示：仅在暗黑破坏神4窗口活动时生效")
 
-; 添加技能设置区域
-myGui.AddGroupBox("x10 y140 w460 h320", "键设置")
+; 添加技能设置区域 - 调整 GroupBox 高度
+myGui.AddGroupBox("x10 y140 w460 h350", "键设置")
 
-; 添加Shift键勾选框
-myGui.AddCheckbox("x30 y170 w100 h20", "按住Shift").OnEvent("Click", ToggleShift)
+; 添加Shift键勾选框 - 调整位置
+myGui.AddCheckbox("x30 y165 w100 h20", "按住Shift").OnEvent("Click", ToggleShift)
 
-; 添加列标题
-myGui.AddText("x30 y200 w60 h20", "按键")
-myGui.AddText("x130 y200 w60 h20", "启用")
-myGui.AddText("x200 y200 w120 h20", "间隔(毫秒)")
+; 添加列标题 - 调整位置
+myGui.AddText("x30 y195 w60 h20", "按键")
+myGui.AddText("x130 y195 w60 h20", "启用")
+myGui.AddText("x200 y195 w120 h20", "间隔(毫秒)")
 
-; 技能1-4设置
+; 技能1-4设置 - 减小间距
 skillControls := Map()
 Loop 4 {
-    yPos := 230 + (A_Index-1) * 35
+    yPos := 225 + (A_Index-1) * 30
     myGui.AddText("x30 y" yPos " w60 h20", "技能" A_Index ":")
     skillControls[A_Index] := {
         key: myGui.AddHotkey("x90 y" yPos " w35 h20", A_Index),
@@ -62,28 +63,45 @@ Loop 4 {
     }
 }
 
-; 鼠标按键设置
+; 鼠标按键设置 - 调整位置
 mouseControls := {
     left: {
-        enable: myGui.AddCheckbox("x130 y370 w60 h20", "启用"),
-        interval: myGui.AddEdit("x200 y370 w60 h20", "80")
+        enable: myGui.AddCheckbox("x130 y345 w60 h20", "启用"),
+        interval: myGui.AddEdit("x200 y345 w60 h20", "80")
     },
     right: {
-        enable: myGui.AddCheckbox("x130 y405 w60 h20", "启用"),
-        interval: myGui.AddEdit("x200 y405 w60 h20", "300")
+        enable: myGui.AddCheckbox("x130 y375 w60 h20", "启用"),
+        interval: myGui.AddEdit("x200 y375 w60 h20", "300")
     }
 }
-myGui.AddText("x30 y370 w60 h20", "左键:")
-myGui.AddText("x30 y405 w60 h20", "右键:")
+myGui.AddText("x30 y345 w60 h20", "左键:")
+myGui.AddText("x30 y375 w60 h20", "右键:")
 
-; 添加保存按钮
-myGui.AddButton("x30 y420 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
+; 添加功能键设置 - 调整位置
+myGui.AddText("x30 y405 w60 h20", "翻滚:")
+myGui.AddText("x30 y435 w60 h20", "喝药:")
+
+utilityControls := {
+    dodge: {
+        key: myGui.AddText("x90 y405 w35 h20", "空格"),
+        enable: myGui.AddCheckbox("x130 y405 w60 h20", "启用"),
+        interval: myGui.AddEdit("x200 y405 w60 h20", "1000")
+    },
+    potion: {
+        key: myGui.AddHotkey("x90 y435 w35 h20", "q"),
+        enable: myGui.AddCheckbox("x130 y435 w60 h20", "启用"),
+        interval: myGui.AddEdit("x200 y435 w60 h20", "15000")
+    }
+}
+
+; 添加保存按钮 - 调整位置
+myGui.AddButton("x30 y470 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
 
 ; 添加状态栏
 statusBar := myGui.AddStatusBar(, "就绪")
 
 ; 显示GUI
-myGui.Show("w480 h500")
+myGui.Show("w480 h550")
 
 ; 加载设置
 LoadSettings()
@@ -139,6 +157,15 @@ StartAllTimers() {
     if (mouseControls.right.enable.Value = 1) {
         SetTimer PressRightClick, mouseControls.right.interval.Value
     }
+    
+    ; 添加功能键定时器
+    if (utilityControls.dodge.enable.Value = 1) {
+        SetTimer PressDodge, utilityControls.dodge.interval.Value
+    }
+    
+    if (utilityControls.potion.enable.Value = 1) {
+        SetTimer PressPotion, utilityControls.potion.interval.Value
+    }
 }
 
 ; 停止所有定时器
@@ -151,6 +178,10 @@ StopAllTimers() {
     ; 停止鼠标定时器
     SetTimer PressLeftClick, 0
     SetTimer PressRightClick, 0
+    
+    ; 停止功能键定时器
+    SetTimer PressDodge, 0
+    SetTimer PressPotion, 0
     
     ; 确保释放所有可能被按住的按键
     Send "{Shift up}"  ; 确保Shift键被释放
@@ -224,6 +255,14 @@ SaveSettings(*) {
     IniWrite(mouseControls.left.interval.Value, settingsFile, "Mouse", "LeftClickInterval")
     IniWrite(mouseControls.right.enable.Value, settingsFile, "Mouse", "RightClickEnable")
     IniWrite(mouseControls.right.interval.Value, settingsFile, "Mouse", "RightClickInterval")
+    
+    ; 保存功能键设置
+    IniWrite(utilityControls.dodge.enable.Value, settingsFile, "Utility", "DodgeEnable")
+    IniWrite(utilityControls.dodge.interval.Value, settingsFile, "Utility", "DodgeInterval")
+    
+    IniWrite(utilityControls.potion.key.Value, settingsFile, "Utility", "PotionKey")
+    IniWrite(utilityControls.potion.enable.Value, settingsFile, "Utility", "PotionEnable")
+    IniWrite(utilityControls.potion.interval.Value, settingsFile, "Utility", "PotionInterval")
     
     statusBar.Text := "设置已保存"
 }
@@ -323,10 +362,52 @@ LoadSettings() {
         mouseControls.right.enable.Value := IniRead(settingsFile, "Mouse", "RightClickEnable", 0)
         mouseControls.right.interval.Value := IniRead(settingsFile, "Mouse", "RightClickInterval", 300)
     }
+    
+    ; 加载功能键设置
+    try {
+        utilityControls.dodge.enable.Value := IniRead(settingsFile, "Utility", "DodgeEnable", 0)
+        utilityControls.dodge.interval.Value := IniRead(settingsFile, "Utility", "DodgeInterval", 1000)
+        
+        utilityControls.potion.key.Value := IniRead(settingsFile, "Utility", "PotionKey", "q")
+        utilityControls.potion.enable.Value := IniRead(settingsFile, "Utility", "PotionEnable", 0)
+        utilityControls.potion.interval.Value := IniRead(settingsFile, "Utility", "PotionInterval", 15000)
+    }
 }
 
 ; 切换Shift键勾选框
 ToggleShift(*) {
     global shiftEnabled
     shiftEnabled := !shiftEnabled
+}
+
+; 添加功能键按键函数
+PressDodge() {
+    if (isRunning && !isPaused && utilityControls.dodge.enable.Value = 1) {
+        if (shiftEnabled) {
+            Send "{Shift down}"
+            Sleep 10
+            Send "{Space}"
+            Sleep 10
+            Send "{Shift up}"
+        } else {
+            Send "{Space}"
+        }
+    }
+}
+
+PressPotion() {
+    if (isRunning && !isPaused && utilityControls.potion.enable.Value = 1) {
+        key := utilityControls.potion.key.Value
+        if key != "" {
+            if (shiftEnabled) {
+                Send "{Shift down}"
+                Sleep 10
+                Send "{" key "}"
+                Sleep 10
+                Send "{Shift up}"
+            } else {
+                Send "{" key "}"
+            }
+        }
+    }
 } 
