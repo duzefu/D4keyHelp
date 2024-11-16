@@ -16,15 +16,22 @@ global mouseControls := {}
 global statusBar := ""
 global shiftEnabled := false
 global utilityControls := {}
+global skillActiveState := false
+global skillPositions := Map(
+    1, {x: 1035, y: 1290},
+    2, {x: 1035 + 84, y: 1290},
+    3, {x: 1035 + 84 * 2, y: 1290},
+    4, {x: 1035 + 84 * 3, y: 1290},
+    "left", {x: 1035 + 84 * 4, y: 1290},
+    "right", {x: 1035 + 84 * 5, y: 1290}
+)
+global skillBuffControls := Map()
 
 ; 调试输出函数
 DebugLog(message) {
     if DEBUG {
         timestamp := FormatTime(, "yyyy-MM-dd HH:mm:ss")
         FileAppend timestamp " - " message "`n", debugLogFile
-        
-        ToolTip message
-        SetTimer () => ToolTip(), -1000
     }
 }
 
@@ -61,6 +68,7 @@ Loop 4 {
         enable: myGui.AddCheckbox("x130 y" yPos " w60 h20", "启用"),
         interval: myGui.AddEdit("x200 y" yPos " w60 h20", "300")
     }
+    skillBuffControls[A_Index] := myGui.AddCheckbox("x270 y" yPos " w100 h20", "维持BUFF")
 }
 
 ; 鼠标按键设置 - 调整位置
@@ -141,30 +149,36 @@ OnWindowChange() {
 
 ; 启动所有定时器
 StartAllTimers() {
+    ; 先确保所有定时器都已停止
+    StopAllTimers()
+    
+    ; 然后重新启动需要的定时器
     Loop 4 {
-        ; 只有当复选框被选中时才启动定时器
-        if (skillControls[A_Index].enable.Value = 1) {  ; 检查复选框的实际值
+        if (skillControls[A_Index].enable.Value = 1) {
             interval := skillControls[A_Index].interval.Value
             SetTimer PressSkill.Bind(A_Index), interval
+            DebugLog("启动技能" A_Index "定时器，间隔: " interval)
         }
     }
     
-    ; 只有当复选框被选中时才启动鼠标定时器
     if (mouseControls.left.enable.Value = 1) {
         SetTimer PressLeftClick, mouseControls.left.interval.Value
+        DebugLog("启动左键定时器")
     }
     
     if (mouseControls.right.enable.Value = 1) {
         SetTimer PressRightClick, mouseControls.right.interval.Value
+        DebugLog("启动右键定时器")
     }
     
-    ; 添加功能键定时器
     if (utilityControls.dodge.enable.Value = 1) {
         SetTimer PressDodge, utilityControls.dodge.interval.Value
+        DebugLog("启动翻滚定时器")
     }
     
     if (utilityControls.potion.enable.Value = 1) {
         SetTimer PressPotion, utilityControls.potion.interval.Value
+        DebugLog("启动喝药定时器")
     }
 }
 
@@ -183,8 +197,7 @@ StopAllTimers() {
     SetTimer PressDodge, 0
     SetTimer PressPotion, 0
     
-    ; 确保释放所有可能被按住的按键
-    Send "{Shift up}"  ; 确保Shift键被释放
+    DebugLog("已停止所有定时器")
 }
 
 ; 按键功能实现
@@ -192,6 +205,23 @@ PressSkill(skillNum) {
     if (isRunning && !isPaused && skillControls[skillNum].enable.Value = 1) {
         key := skillControls[skillNum].key.Value
         if key != "" {
+            ; 只在勾选了维持BUFF时检查技能是否已激活
+            if (skillNum <= 4 && skillBuffControls.Has(skillNum) && skillBuffControls[skillNum].Value = 1) {
+                if skillPositions.Has(skillNum) {
+                    pos := skillPositions[skillNum]
+                    try {
+                        skillActiveState := IsSkillActive(pos.x, pos.y)
+                        
+                        ; 只有在技能未激活时才发送按键
+                        if (skillActiveState) {
+                            return  ; 如果技能已激活，直接返回
+                        }
+                    } catch as err {
+                        DebugLog("检测技能状态出错: " err.Message)
+                    }
+                }
+            }
+            
             if (shiftEnabled) {
                 Send "{Shift down}"
                 Sleep 10
@@ -248,6 +278,8 @@ SaveSettings(*) {
         IniWrite(skillControls[A_Index].key.Value, settingsFile, "Skills", "Skill" A_Index "Key")
         IniWrite(skillControls[A_Index].enable.Value, settingsFile, "Skills", "Skill" A_Index "Enable")
         IniWrite(skillControls[A_Index].interval.Value, settingsFile, "Skills", "Skill" A_Index "Interval")
+        ; 保存维持BUFF设置
+        IniWrite(skillBuffControls[A_Index].Value, settingsFile, "Skills", "Skill" A_Index "Buff")
     }
     
     ; 保存鼠标设置
@@ -325,7 +357,34 @@ ToggleMacro(*) {
         previouslyPaused := false
         statusText.Value := "状态: 已停止"
         statusBar.Text := "宏已停止"
+        
+        ; 确保释放所有按键
+        ReleaseAllKeys()
     }
+    
+    DebugLog("ToggleMacro 状态: " . (isRunning ? "运行" : "停止"))
+}
+
+; 添加一个释放所有按键的函数
+ReleaseAllKeys() {
+    ; 确保释放所有可能被按住的按键
+    Send "{Shift up}"  ; 释放Shift键
+    Send "{Ctrl up}"   ; 释放Ctrl键
+    Send "{Alt up}"    ; 释放Alt键
+    
+    ; 释放1-4号技能键
+    Loop 4 {
+        key := skillControls[A_Index].key.Value
+        if key != ""
+            Send "{" key " up}"
+    }
+    
+    ; 释放鼠标按键
+    SetMouseDelay -1
+    Click "up left"    ; 修正：使用正确的语法释放左键
+    Click "up right"   ; 修正：使用正确的语法释放右键
+    
+    DebugLog("已释放所有按键")
 }
 
 ; 设置窗口状态检查定时器
@@ -348,10 +407,13 @@ LoadSettings() {
             key := IniRead(settingsFile, "Skills", "Skill" A_Index "Key", A_Index)
             enabled := IniRead(settingsFile, "Skills", "Skill" A_Index "Enable", 1)
             interval := IniRead(settingsFile, "Skills", "Skill" A_Index "Interval", 300)
+            ; 加载维持BUFF设置
+            buffEnabled := IniRead(settingsFile, "Skills", "Skill" A_Index "Buff", 0)
             
             skillControls[A_Index].key.Value := key
             skillControls[A_Index].enable.Value := enabled
             skillControls[A_Index].interval.Value := interval
+            skillBuffControls[A_Index].Value := buffEnabled
         }
     }
     
@@ -410,4 +472,16 @@ PressPotion() {
             }
         }
     }
+}
+
+; 添加检测技能激活状态的函数
+IsSkillActive(x, y) {
+    ; 获取指定坐标的像素颜色
+    color := PixelGetColor(x, y)
+    
+    ; 提取绿色分量 (中间两位十六进制)
+    green := (color >> 8) & 0xFF
+    
+    ; 判断绿色分量是否大于60
+    return green > 60
 } 
