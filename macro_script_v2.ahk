@@ -26,6 +26,7 @@ global skillPositions := Map(
     "right", {x: 1035 + 84 * 5, y: 1290}
 )
 global skillBuffControls := Map()
+global boundSkillTimers := Map()  ; 存储绑定的技能定时器函数
 
 ; 调试输出函数
 DebugLog(message) {
@@ -156,19 +157,21 @@ StartAllTimers() {
     Loop 4 {
         if (skillControls[A_Index].enable.Value = 1) {
             interval := skillControls[A_Index].interval.Value
-            SetTimer PressSkill.Bind(A_Index), interval
+            ; 创建并保存绑定函数
+            boundSkillTimers[A_Index] := PressSkill.Bind(A_Index)
+            SetTimer(boundSkillTimers[A_Index], interval)
             DebugLog("启动技能" A_Index "定时器，间隔: " interval)
         }
     }
     
     if (mouseControls.left.enable.Value = 1) {
         SetTimer PressLeftClick, mouseControls.left.interval.Value
-        DebugLog("启动左键定时器")
+        DebugLog("启动左键定时器 - 间隔: " mouseControls.left.interval.Value)
     }
     
     if (mouseControls.right.enable.Value = 1) {
         SetTimer PressRightClick, mouseControls.right.interval.Value
-        DebugLog("启动右键定时器")
+        DebugLog("启动右键定时器 - 间隔: " mouseControls.right.interval.Value)
     }
     
     if (utilityControls.dodge.enable.Value = 1) {
@@ -186,7 +189,11 @@ StartAllTimers() {
 StopAllTimers() {
     ; 确保每个技能定时器都被停止
     Loop 4 {
-        SetTimer PressSkill.Bind(A_Index), 0
+        if boundSkillTimers.Has(A_Index) {
+            SetTimer(boundSkillTimers[A_Index], 0)  ; 使用保存的绑定函数引用来停止定时器
+            boundSkillTimers.Delete(A_Index)  ; 删除引用
+            DebugLog("停止技能" A_Index "定时器")
+        }
     }
     
     ; 停止鼠标定时器
@@ -224,9 +231,7 @@ PressSkill(skillNum) {
             
             if (shiftEnabled) {
                 Send "{Shift down}"
-                Sleep 10
                 Send "{" key "}"
-                Sleep 10
                 Send "{Shift up}"
             } else {
                 Send "{" key "}"
