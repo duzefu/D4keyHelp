@@ -27,6 +27,7 @@ global skillPositions := Map(
 )
 global skillBuffControls := Map()
 global boundSkillTimers := Map()  ; 存储绑定的技能定时器函数
+global timerStates := Map()  ; 新增：用于跟踪定时器状态
 
 ; 调试输出函数
 DebugLog(message) {
@@ -150,38 +151,43 @@ OnWindowChange() {
 
 ; 启动所有定时器
 StartAllTimers() {
-    ; 先确保所有定时器都已停止
     StopAllTimers()
     
-    ; 然后重新启动需要的定时器
-    Loop 4 {
-        if (skillControls[A_Index].enable.Value = 1) {
-            interval := skillControls[A_Index].interval.Value
-            ; 创建并保存绑定函数
-            boundSkillTimers[A_Index] := PressSkill.Bind(A_Index)
-            SetTimer(boundSkillTimers[A_Index], interval)
-            DebugLog("启动技能" A_Index "定时器，间隔: " interval)
+    for i in [1, 2, 3, 4] {
+        if (skillControls[i].enable.Value = 1) {
+            interval := Integer(skillControls[i].interval.Value)
+            if (interval > 0) {
+                boundSkillTimers[i] := PressSkill.Bind(i)
+                SetTimer(boundSkillTimers[i], interval)
+                timerStates[i] := true
+                DebugLog("启动技能" i "定时器，间隔: " interval)
+            }
         }
     }
     
-    if (mouseControls.left.enable.Value = 1) {
-        SetTimer PressLeftClick, mouseControls.left.interval.Value
-        DebugLog("启动左键定时器 - 间隔: " mouseControls.left.interval.Value)
-    }
-    
-    if (mouseControls.right.enable.Value = 1) {
-        SetTimer PressRightClick, mouseControls.right.interval.Value
-        DebugLog("启动右键定时器 - 间隔: " mouseControls.right.interval.Value)
-    }
-    
-    if (utilityControls.dodge.enable.Value = 1) {
-        SetTimer PressDodge, utilityControls.dodge.interval.Value
-        DebugLog("启动翻滚定时器")
-    }
-    
-    if (utilityControls.potion.enable.Value = 1) {
-        SetTimer PressPotion, utilityControls.potion.interval.Value
-        DebugLog("启动喝药定时器")
+    ; 优化鼠标和功能键定时器启动
+    startTimer("leftClick", mouseControls.left)
+    startTimer("rightClick", mouseControls.right)
+    startTimer("dodge", utilityControls.dodge)
+    startTimer("potion", utilityControls.potion)
+}
+
+; 新增：辅助函数用于启动单个定时器
+startTimer(name, control) {
+    if (control.enable.Value = 1) {
+        interval := Integer(control.interval.Value)
+        if (interval > 0) {
+            timerFunc := name = "leftClick" ? PressLeftClick :
+                        name = "rightClick" ? PressRightClick :
+                        name = "dodge" ? PressDodge :
+                        name = "potion" ? PressPotion : 0
+            
+            if (timerFunc) {
+                SetTimer(timerFunc, interval)
+                timerStates[name] := true
+                DebugLog("启动" name "定时器 - 间隔: " interval)
+            }
+        }
     }
 }
 
@@ -209,42 +215,49 @@ StopAllTimers() {
 
 ; 按键功能实现
 PressSkill(skillNum) {
-    if (isRunning && !isPaused && skillControls[skillNum].enable.Value = 1) {
-        key := skillControls[skillNum].key.Value
-        if key != "" {
-            ; 只在勾选了维持BUFF时检查技能是否已激活
-            if (skillNum <= 4 && skillBuffControls.Has(skillNum) && skillBuffControls[skillNum].Value = 1) {
-                if skillPositions.Has(skillNum) {
-                    pos := skillPositions[skillNum]
-                    try {
-                        skillActiveState := IsSkillActive(pos.x, pos.y)
-                        
-                        ; 只有在技能未激活时才发送按键
-                        if (skillActiveState) {
-                            return  ; 如果技能已激活，直接返回
-                        }
-                    } catch as err {
-                        DebugLog("检测技能状态出错: " err.Message)
-                    }
-                }
+    if (!isRunning || isPaused || !skillControls[skillNum].enable.Value)
+        return
+        
+    key := skillControls[skillNum].key.Value
+    if (key = "")
+        return
+        
+    if (skillNum <= 4 && skillBuffControls[skillNum].Value = 1) {
+        try {
+            if (skillPositions.Has(skillNum)) {
+                pos := skillPositions[skillNum]
+                if (IsSkillActive(pos.x, pos.y))
+                    return
             }
-            
-            if (shiftEnabled) {
-                Send "{Shift down}"
-                Send "{" key "}"
-                Send "{Shift up}"
-            } else {
-                Send "{" key "}"
-            }
+        } catch as err {
+            DebugLog("检测技能状态出错: " err.Message)
         }
+    }
+    
+    SendKey(key)
+}
+
+; 新增：统一的按键发送函数
+SendKey(key) {
+    if (shiftEnabled) {
+        Send "{Shift down}"
+        Sleep 10
+        Send "{" key "}"
+        Sleep 10
+        Send "{Shift up}"
+    } else {
+        Send "{" key "}"
     }
 }
 
+; 优化鼠标点击函数
 PressLeftClick() {
-    if (isRunning && !isPaused && mouseControls.left.enable.Value = 1) {
+    if (isRunning && !isPaused && mouseControls.left.enable.Value) {
         if (shiftEnabled) {
             Send "{Shift down}"
+            Sleep 10
             Click
+            Sleep 10
             Send "{Shift up}"
         } else {
             Click
@@ -275,33 +288,48 @@ SendKeys() {
 
 ; 保存设置
 SaveSettings(*) {
-    ; 保存所有设置到配置文件
     settingsFile := A_ScriptDir "\settings.ini"
     
-    ; 保存技能设置
-    Loop 4 {
-        IniWrite(skillControls[A_Index].key.Value, settingsFile, "Skills", "Skill" A_Index "Key")
-        IniWrite(skillControls[A_Index].enable.Value, settingsFile, "Skills", "Skill" A_Index "Enable")
-        IniWrite(skillControls[A_Index].interval.Value, settingsFile, "Skills", "Skill" A_Index "Interval")
-        ; 保存维持BUFF设置
-        IniWrite(skillBuffControls[A_Index].Value, settingsFile, "Skills", "Skill" A_Index "Buff")
+    try {
+        ; 保存技能设置
+        for i in [1, 2, 3, 4] {
+            section := "Skills"
+            IniWrite(skillControls[i].key.Value, settingsFile, section, "Skill" i "Key")
+            IniWrite(skillControls[i].enable.Value, settingsFile, section, "Skill" i "Enable")
+            IniWrite(skillControls[i].interval.Value, settingsFile, section, "Skill" i "Interval")
+            IniWrite(skillBuffControls[i].Value, settingsFile, section, "Skill" i "Buff")
+        }
+        
+        ; 保存鼠标设置
+        section := "Mouse"
+        SaveMouseSettings(settingsFile, section)
+        
+        ; 保存功能键设置
+        section := "Utility"
+        SaveUtilitySettings(settingsFile, section)
+        
+        statusBar.Text := "设置已保存"
+    } catch as err {
+        statusBar.Text := "保存设置失败: " err.Message
+        DebugLog("保存设置失败: " err.Message)
     }
-    
-    ; 保存鼠标设置
-    IniWrite(mouseControls.left.enable.Value, settingsFile, "Mouse", "LeftClickEnable")
-    IniWrite(mouseControls.left.interval.Value, settingsFile, "Mouse", "LeftClickInterval")
-    IniWrite(mouseControls.right.enable.Value, settingsFile, "Mouse", "RightClickEnable")
-    IniWrite(mouseControls.right.interval.Value, settingsFile, "Mouse", "RightClickInterval")
-    
-    ; 保存功能键设置
-    IniWrite(utilityControls.dodge.enable.Value, settingsFile, "Utility", "DodgeEnable")
-    IniWrite(utilityControls.dodge.interval.Value, settingsFile, "Utility", "DodgeInterval")
-    
-    IniWrite(utilityControls.potion.key.Value, settingsFile, "Utility", "PotionKey")
-    IniWrite(utilityControls.potion.enable.Value, settingsFile, "Utility", "PotionEnable")
-    IniWrite(utilityControls.potion.interval.Value, settingsFile, "Utility", "PotionInterval")
-    
-    statusBar.Text := "设置已保存"
+}
+
+; 新增：独立的鼠标设置保存函数
+SaveMouseSettings(file, section) {
+    IniWrite(mouseControls.left.enable.Value, file, section, "LeftClickEnable")
+    IniWrite(mouseControls.left.interval.Value, file, section, "LeftClickInterval")
+    IniWrite(mouseControls.right.enable.Value, file, section, "RightClickEnable")
+    IniWrite(mouseControls.right.interval.Value, file, section, "RightClickInterval")
+}
+
+; 新增：独立的功能键设置保存函数
+SaveUtilitySettings(file, section) {
+    IniWrite(utilityControls.dodge.enable.Value, file, section, "DodgeEnable")
+    IniWrite(utilityControls.dodge.interval.Value, file, section, "DodgeInterval")
+    IniWrite(utilityControls.potion.key.Value, file, section, "PotionKey")
+    IniWrite(utilityControls.potion.enable.Value, file, section, "PotionEnable")
+    IniWrite(utilityControls.potion.interval.Value, file, section, "PotionInterval")
 }
 
 ; 热键设置
