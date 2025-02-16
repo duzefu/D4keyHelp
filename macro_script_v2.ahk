@@ -28,6 +28,7 @@ global skillPositions := Map(
 global skillBuffControls := Map()
 global boundSkillTimers := Map()  ; 存储绑定的技能定时器函数
 global timerStates := Map()  ; 新增：用于跟踪定时器状态
+global forceMove := {}  ; 新增：强制移动控件
 
 ; 调试输出函数
 DebugLog(message) {
@@ -90,6 +91,7 @@ myGui.AddText("x30 y375 w60 h20", "右键:")
 ; 添加功能键设置 - 调整位置
 myGui.AddText("x30 y405 w60 h20", "翻滚:")
 myGui.AddText("x30 y435 w60 h20", "喝药:")
+myGui.AddText("x30 y465 w60 h20", "强移:")  ; 新增：强制移动文本
 
 utilityControls := {
     dodge: {
@@ -101,11 +103,16 @@ utilityControls := {
         key: myGui.AddHotkey("x90 y435 w35 h20", "q"),
         enable: myGui.AddCheckbox("x130 y435 w60 h20", "启用"),
         interval: myGui.AddEdit("x200 y435 w60 h20", "15000")
+    },
+    forceMove: {  ; 新增：强制移动控件
+        key: myGui.AddHotkey("x90 y465 w35 h20", "``"),
+        enable: myGui.AddCheckbox("x130 y465 w60 h20", "启用"),
+        interval: myGui.AddEdit("x200 y465 w60 h20", "50")
     }
 }
 
 ; 添加保存按钮 - 调整位置
-myGui.AddButton("x30 y470 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
+myGui.AddButton("x30 y500 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
 
 ; 添加状态栏
 statusBar := myGui.AddStatusBar(, "就绪")
@@ -170,6 +177,7 @@ StartAllTimers() {
     startTimer("rightClick", mouseControls.right)
     startTimer("dodge", utilityControls.dodge)
     startTimer("potion", utilityControls.potion)
+    startTimer("forceMove", utilityControls.forceMove)  ; 新增：启动强制移动定时器
 }
 
 ; 新增：辅助函数用于启动单个定时器
@@ -180,7 +188,8 @@ startTimer(name, control) {
             timerFunc := name = "leftClick" ? PressLeftClick :
                         name = "rightClick" ? PressRightClick :
                         name = "dodge" ? PressDodge :
-                        name = "potion" ? PressPotion : 0
+                        name = "potion" ? PressPotion :
+                        name = "forceMove" ? PressForceMove : 0
             
             if (timerFunc) {
                 SetTimer(timerFunc, interval)
@@ -209,6 +218,7 @@ StopAllTimers() {
     ; 停止功能键定时器
     SetTimer PressDodge, 0
     SetTimer PressPotion, 0
+    SetTimer PressForceMove, 0  ; 新增：停止强制移动定时器
     
     DebugLog("已停止所有定时器")
 }
@@ -330,12 +340,18 @@ SaveUtilitySettings(file, section) {
     IniWrite(utilityControls.potion.key.Value, file, section, "PotionKey")
     IniWrite(utilityControls.potion.enable.Value, file, section, "PotionEnable")
     IniWrite(utilityControls.potion.interval.Value, file, section, "PotionInterval")
+    ; 新增：保存强制移动设置
+    IniWrite(utilityControls.forceMove.key.Value, file, section, "ForceMoveKey")
+    IniWrite(utilityControls.forceMove.enable.Value, file, section, "ForceMoveEnable")
+    IniWrite(utilityControls.forceMove.interval.Value, file, section, "ForceMoveInterval")
 }
 
 ; 热键设置
 #HotIf WinActive("ahk_class Diablo IV Main Window Class")
 
-F1::ToggleMacro()
+F1::{
+    ToggleMacro()
+}
 F3::SendKeys()
 
 Tab::{
@@ -466,6 +482,11 @@ LoadSettings() {
         utilityControls.potion.key.Value := IniRead(settingsFile, "Utility", "PotionKey", "q")
         utilityControls.potion.enable.Value := IniRead(settingsFile, "Utility", "PotionEnable", 0)
         utilityControls.potion.interval.Value := IniRead(settingsFile, "Utility", "PotionInterval", 15000)
+
+        ; 新增：加载强制移动设置
+        utilityControls.forceMove.key.Value := IniRead(settingsFile, "Utility", "ForceMoveKey", "``")
+        utilityControls.forceMove.enable.Value := IniRead(settingsFile, "Utility", "ForceMoveEnable", 0)
+        utilityControls.forceMove.interval.Value := IniRead(settingsFile, "Utility", "ForceMoveInterval", 50)
     }
 }
 
@@ -493,6 +514,24 @@ PressDodge() {
 PressPotion() {
     if (isRunning && !isPaused && utilityControls.potion.enable.Value = 1) {
         key := utilityControls.potion.key.Value
+        if key != "" {
+            if (shiftEnabled) {
+                Send "{Shift down}"
+                Sleep 10
+                Send "{" key "}"
+                Sleep 10
+                Send "{Shift up}"
+            } else {
+                Send "{" key "}"
+            }
+        }
+    }
+}
+
+; 新增：强制移动按键函数
+PressForceMove() {
+    if (isRunning && !isPaused && utilityControls.forceMove.enable.Value = 1) {
+        key := utilityControls.forceMove.key.Value
         if key != "" {
             if (shiftEnabled) {
                 Send "{Shift down}"
