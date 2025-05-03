@@ -29,6 +29,9 @@ global skillBuffControls := Map()
 global boundSkillTimers := Map()  ; 存储绑定的技能定时器函数
 global timerStates := Map()  ; 新增：用于跟踪定时器状态
 global forceMove := {}  ; 新增：强制移动控件
+global mouseAutoMove := {}  ; 新增：鼠标自动移动控件
+global mouseAutoMoveEnabled := false  ; 新增：鼠标自动移动状态
+global mouseAutoMoveCurrentPoint := 1  ; 新增：当前鼠标移动点索引
 
 ; 调试输出函数
 DebugLog(message) {
@@ -111,6 +114,13 @@ utilityControls := {
     }
 }
 
+; 添加鼠标自动移动勾选框
+mouseAutoMove := {
+    enable: myGui.AddCheckbox("x290 y465 w140 h20", "鼠标自动移动"),
+    interval: myGui.AddEdit("x430 y465 w40 h20", "1000")
+}
+mouseAutoMove.enable.OnEvent("Click", ToggleMouseAutoMove)
+
 ; 添加保存按钮 - 调整位置
 myGui.AddButton("x30 y500 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
 
@@ -178,6 +188,18 @@ StartAllTimers() {
     startTimer("dodge", utilityControls.dodge)
     startTimer("potion", utilityControls.potion)
     startTimer("forceMove", utilityControls.forceMove)  ; 新增：启动强制移动定时器
+    
+    DebugLog("鼠标自动移动状态: " . (mouseAutoMoveEnabled ? "启用" : "禁用") . ", GUI勾选状态: " . mouseAutoMove.enable.Value)
+    
+    ; 添加鼠标自动移动定时器
+    if (mouseAutoMoveEnabled) {
+        interval := Integer(mouseAutoMove.interval.Value)
+        if (interval > 0) {
+            SetTimer(MoveMouseToNextPoint, interval)
+            timerStates["mouseAutoMove"] := true
+            DebugLog("启动鼠标自动移动定时器 - 间隔: " interval)
+        }
+    }
 }
 
 ; 新增：辅助函数用于启动单个定时器
@@ -219,6 +241,9 @@ StopAllTimers() {
     SetTimer PressDodge, 0
     SetTimer PressPotion, 0
     SetTimer PressForceMove, 0  ; 新增：停止强制移动定时器
+    
+    ; 停止鼠标自动移动定时器
+    SetTimer MoveMouseToNextPoint, 0
     
     DebugLog("已停止所有定时器")
 }
@@ -331,6 +356,8 @@ SaveMouseSettings(file, section) {
     IniWrite(mouseControls.left.interval.Value, file, section, "LeftClickInterval")
     IniWrite(mouseControls.right.enable.Value, file, section, "RightClickEnable")
     IniWrite(mouseControls.right.interval.Value, file, section, "RightClickInterval")
+    IniWrite(mouseAutoMove.enable.Value, file, section, "MouseAutoMoveEnable")
+    IniWrite(mouseAutoMove.interval.Value, file, section, "MouseAutoMoveInterval")
 }
 
 ; 新增：独立的功能键设置保存函数
@@ -375,7 +402,7 @@ Tab::{
 
 ; 宏切换功能
 ToggleMacro(*) {
-    global isRunning, isPaused
+    global isRunning, isPaused, mouseAutoMoveEnabled
     
     ; 确保完全停止所有定时器
     StopAllTimers()
@@ -387,6 +414,9 @@ ToggleMacro(*) {
         ; 重置暂停状态
         isPaused := false
         previouslyPaused := false
+        
+        ; 确保鼠标自动移动状态与GUI勾选框一致
+        mouseAutoMoveEnabled := (mouseAutoMove.enable.Value = 1)
         
         ; 只有在暗黑4窗口激活时才启动定时器
         if WinActive("ahk_class Diablo IV Main Window Class") {
@@ -470,6 +500,10 @@ LoadSettings() {
         mouseControls.left.interval.Value := IniRead(settingsFile, "Mouse", "LeftClickInterval", 80)
         mouseControls.right.enable.Value := IniRead(settingsFile, "Mouse", "RightClickEnable", 0)
         mouseControls.right.interval.Value := IniRead(settingsFile, "Mouse", "RightClickInterval", 300)
+        mouseAutoMove.enable.Value := IniRead(settingsFile, "Mouse", "MouseAutoMoveEnable", 0)
+        mouseAutoMove.interval.Value := IniRead(settingsFile, "Mouse", "MouseAutoMoveInterval", 1000)
+        mouseAutoMoveEnabled := (mouseAutoMove.enable.Value = 1)
+        DebugLog("加载设置 - 鼠标自动移动状态: " . (mouseAutoMoveEnabled ? "启用" : "禁用") . ", 值: " . mouseAutoMove.enable.Value)
     }
     
     ; 加载功能键设置
@@ -554,4 +588,60 @@ IsSkillActive(x, y) {
     
     ; 判断绿色分量是否大于60
     return green > 60
+}
+
+; 添加切换鼠标自动移动功能
+ToggleMouseAutoMove(*) {
+    global mouseAutoMoveEnabled
+    mouseAutoMoveEnabled := !mouseAutoMoveEnabled
+    
+    ; 更新GUI勾选框状态以匹配当前状态
+    mouseAutoMove.enable.Value := mouseAutoMoveEnabled ? 1 : 0
+    
+    ; 如果宏已经在运行，则更新定时器状态
+    if (isRunning && !isPaused) {
+        if (mouseAutoMoveEnabled) {
+            interval := Integer(mouseAutoMove.interval.Value)
+            if (interval > 0) {
+                SetTimer(MoveMouseToNextPoint, interval)
+                timerStates["mouseAutoMove"] := true
+                DebugLog("启动鼠标自动移动定时器 - 间隔: " interval)
+            }
+        } else {
+            SetTimer(MoveMouseToNextPoint, 0)
+            timerStates["mouseAutoMove"] := false
+            DebugLog("停止鼠标自动移动定时器")
+        }
+    }
+}
+
+; 添加鼠标自动移动函数
+MoveMouseToNextPoint() {
+    global mouseAutoMoveCurrentPoint
+    
+    if (!isRunning || isPaused || !mouseAutoMoveEnabled)
+        return
+    
+    ; 获取屏幕分辨率
+    screenWidth := A_ScreenWidth
+    screenHeight := A_ScreenHeight
+    
+    ; 计算四个角落的位置（以屏幕分辨率的10%和90%为基准）
+    points := [
+        {x: screenWidth * 0.2, y: screenHeight * 0.2},    ; 左上角
+        {x: screenWidth * 0.5, y: screenHeight * 0.2},    ; 中上角
+        {x: screenWidth * 0.8, y: screenHeight * 0.2},    ; 右上角
+        {x: screenWidth * 0.8, y: screenHeight * 0.8},    ; 右下角
+        {x: screenWidth * 0.5, y: screenHeight * 0.8},    ; 中下角
+        {x: screenWidth * 0.2, y: screenHeight * 0.8}     ; 左下角
+    ]
+    
+    ; 移动鼠标到当前点
+    currentPoint := points[mouseAutoMoveCurrentPoint]
+    MouseMove(currentPoint.x, currentPoint.y, 0)
+    
+    ; 更新到下一个点
+    mouseAutoMoveCurrentPoint := Mod(mouseAutoMoveCurrentPoint, 6) + 1
+    
+    DebugLog("鼠标自动移动到点" mouseAutoMoveCurrentPoint ": x=" currentPoint.x ", y=" currentPoint.y)
 } 
