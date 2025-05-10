@@ -26,6 +26,12 @@ global skillActiveState := false
 global mouseAutoMoveEnabled := false
 global mouseAutoMoveCurrentPoint := 1
 
+; 技能模式常量
+global SKILL_MODE_CLICK := 1    ; 连点模式
+global SKILL_MODE_BUFF := 2     ; 维持BUFF模式
+global SKILL_MODE_HOLD := 3     ; 按住模式
+global skillModeNames := ["连点", "维持BUFF", "按住"]
+
 ; 技能位置映射
 global skillPositions := Map(
     1, {x: 1035, y: 1290},
@@ -96,7 +102,7 @@ CreateMainGUI() {
  * 创建技能控件
  */
 CreateSkillControls() {
-    global myGui, skillControls, skillBuffControls
+    global myGui, skillControls, skillModeNames, SKILL_MODE_CLICK
 
     skillControls := Map()
     Loop 4 {
@@ -105,9 +111,9 @@ CreateSkillControls() {
         skillControls[A_Index] := {
             key: myGui.AddHotkey("x90 y" yPos " w35 h20", A_Index),
             enable: myGui.AddCheckbox("x130 y" yPos " w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y" yPos " w60 h20", "300")
+            interval: myGui.AddEdit("x200 y" yPos " w60 h20", "300"),
+            mode: myGui.AddDropDownList("x270 y" yPos " w100 h120 Choose1", skillModeNames)
         }
-        skillBuffControls[A_Index] := myGui.AddCheckbox("x270 y" yPos " w100 h20", "维持BUFF")
     }
 }
 
@@ -115,16 +121,18 @@ CreateSkillControls() {
  * 创建鼠标控件
  */
 CreateMouseControls() {
-    global myGui, mouseControls
+    global myGui, mouseControls, skillModeNames, SKILL_MODE_CLICK
 
     mouseControls := {
         left: {
             enable: myGui.AddCheckbox("x130 y345 w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y345 w60 h20", "80")
+            interval: myGui.AddEdit("x200 y345 w60 h20", "80"),
+            mode: myGui.AddDropDownList("x270 y345 w100 h120 Choose1", skillModeNames)
         },
         right: {
             enable: myGui.AddCheckbox("x130 y375 w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y375 w60 h20", "300")
+            interval: myGui.AddEdit("x200 y375 w60 h20", "300"),
+            mode: myGui.AddDropDownList("x270 y375 w100 h120 Choose1", skillModeNames)
         }
     }
     myGui.AddText("x30 y345 w60 h20", "左键:")
@@ -342,7 +350,7 @@ StartSingleTimer(name, control, timerFunc) {
  * 停止所有定时器
  */
 StopAllTimers() {
-    global boundSkillTimers
+    global boundSkillTimers, skillControls
 
     ; 停止技能定时器
     Loop 4 {
@@ -350,6 +358,12 @@ StopAllTimers() {
             SetTimer(boundSkillTimers[A_Index], 0)
             boundSkillTimers.Delete(A_Index)
             DebugLog("停止技能" A_Index "定时器")
+        }
+
+        ; 如果是按住模式，确保释放按键
+        key := skillControls[A_Index].key.Value
+        if (key != "") {
+            Send "{" key " up}"
         }
     }
 
@@ -361,7 +375,13 @@ StopAllTimers() {
     SetTimer PressForceMove, 0
     SetTimer MoveMouseToNextPoint, 0
 
-    DebugLog("已停止所有定时器")
+    ; 重置所有按住模式的按键状态
+    ResetAllHoldKeyStates()
+
+    ; 重置鼠标按键状态
+    ResetMouseButtonStates()
+
+    DebugLog("已停止所有定时器并释放按键")
 }
 
 ; ========== 按键功能实现 ==========
@@ -370,7 +390,8 @@ StopAllTimers() {
  * @param {Integer} skillNum - 技能编号(1-4)
  */
 PressSkill(skillNum) {
-    global isRunning, isPaused, skillControls, skillBuffControls, skillPositions
+    global isRunning, isPaused, skillControls, skillPositions
+    global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
 
     ; 检查基本条件
     if (!isRunning || isPaused || !skillControls[skillNum].enable.Value)
@@ -381,8 +402,12 @@ PressSkill(skillNum) {
     if (key = "")
         return
 
-    ; 检查BUFF状态
-    if (skillNum <= 4 && skillBuffControls[skillNum].Value = 1) {
+    ; 获取当前技能模式
+    skillMode := skillControls[skillNum].mode.Value
+
+    ; 根据不同模式处理
+    if (skillMode == SKILL_MODE_BUFF) {
+        ; 维持BUFF模式 - 检查技能是否已激活
         try {
             if (skillPositions.Has(skillNum)) {
                 pos := skillPositions[skillNum]
@@ -394,11 +419,56 @@ PressSkill(skillNum) {
         } catch as err {
             DebugLog("检测技能状态出错: " err.Message)
         }
-    }
 
-    ; 发送按键
-    SendKey(key)
-    DebugLog("按下技能" skillNum " 键: " key)
+        ; 发送按键
+        SendKey(key)
+        DebugLog("按下技能" skillNum " 键(维持BUFF模式): " key)
+    }
+    else if (skillMode == SKILL_MODE_HOLD) {
+        ; 按住模式 - 按下并保持按键
+        static keyStates := Map()
+
+        ; 如果按键未按下，则按下并记录状态
+        if (!keyStates.Has(skillNum) || !keyStates[skillNum]) {
+            Send "{" key " down}"
+            keyStates[skillNum] := true
+            DebugLog("按住技能" skillNum " 键: " key)
+
+            ; 设置一个定时器，每5秒检查一次是否需要继续按住
+            checkTimer := CheckHoldKey.Bind(skillNum, key)
+            SetTimer(checkTimer, 5000)
+        }
+    }
+    else {
+        ; 默认连点模式 - 直接发送按键
+        SendKey(key)
+        DebugLog("按下技能" skillNum " 键(连点模式): " key)
+    }
+}
+
+/**
+ * 检查按住的按键是否需要释放
+ * @param {Integer} skillNum - 技能编号
+ * @param {String} key - 按键
+ */
+CheckHoldKey(skillNum, key) {
+    global isRunning, isPaused, skillControls, SKILL_MODE_HOLD
+    static keyStates := Map()
+
+    ; 如果宏停止、暂停或模式改变，释放按键
+    if (!isRunning || isPaused ||
+        !skillControls[skillNum].enable.Value ||
+        skillControls[skillNum].mode.Value != SKILL_MODE_HOLD) {
+
+        if (keyStates.Has(skillNum) && keyStates[skillNum]) {
+            Send "{" key " up}"
+            keyStates[skillNum] := false
+            DebugLog("释放技能" skillNum " 键: " key)
+
+            ; 停止定时器
+            SetTimer(CheckHoldKey.Bind(skillNum, key), 0)
+        }
+    }
 }
 
 /**
@@ -424,8 +494,29 @@ SendKey(key) {
  */
 PressLeftClick() {
     global isRunning, isPaused, mouseControls, shiftEnabled
+    global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
 
-    if (isRunning && !isPaused && mouseControls.left.enable.Value) {
+    if (!isRunning || isPaused || !mouseControls.left.enable.Value)
+        return
+
+    ; 获取当前模式
+    mouseMode := mouseControls.left.mode.Value
+
+    ; 按住模式处理
+    if (mouseMode == SKILL_MODE_HOLD) {
+        static leftMouseHeld := false
+
+        if (!leftMouseHeld) {
+            if (shiftEnabled)
+                Send "{Shift down}"
+
+            Click "down left"
+            leftMouseHeld := true
+            DebugLog("按住鼠标左键")
+        }
+    }
+    ; 连点模式处理
+    else {
         if (shiftEnabled) {
             Send "{Shift down}"
             Sleep 10
@@ -435,6 +526,7 @@ PressLeftClick() {
         } else {
             Click
         }
+        DebugLog("点击鼠标左键")
     }
 }
 
@@ -443,8 +535,29 @@ PressLeftClick() {
  */
 PressRightClick() {
     global isRunning, isPaused, mouseControls, shiftEnabled
+    global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
 
-    if (isRunning && !isPaused && mouseControls.right.enable.Value = 1) {
+    if (!isRunning || isPaused || !mouseControls.right.enable.Value)
+        return
+
+    ; 获取当前模式
+    mouseMode := mouseControls.right.mode.Value
+
+    ; 按住模式处理
+    if (mouseMode == SKILL_MODE_HOLD) {
+        static rightMouseHeld := false
+
+        if (!rightMouseHeld) {
+            if (shiftEnabled)
+                Send "{Shift down}"
+
+            Click "down right"
+            rightMouseHeld := true
+            DebugLog("按住鼠标右键")
+        }
+    }
+    ; 连点模式处理
+    else {
         if (shiftEnabled) {
             Send "{Shift down}"
             Sleep 10
@@ -454,6 +567,27 @@ PressRightClick() {
         } else {
             Click "right"
         }
+        DebugLog("点击鼠标右键")
+    }
+}
+
+/**
+ * 重置鼠标按键状态
+ */
+ResetMouseButtonStates() {
+    static leftMouseHeld := false
+    static rightMouseHeld := false
+
+    if (leftMouseHeld) {
+        Click "up left"
+        leftMouseHeld := false
+        DebugLog("释放鼠标左键")
+    }
+
+    if (rightMouseHeld) {
+        Click "up right"
+        rightMouseHeld := false
+        DebugLog("释放鼠标右键")
     }
 }
 
@@ -497,14 +631,18 @@ SaveSettings(*) {
  * @param {String} file - 设置文件路径
  */
 SaveSkillSettings(file) {
-    global skillControls, skillBuffControls
+    global skillControls
     section := "Skills"
 
     for i in [1, 2, 3, 4] {
         IniWrite(skillControls[i].key.Value, file, section, "Skill" i "Key")
         IniWrite(skillControls[i].enable.Value, file, section, "Skill" i "Enable")
         IniWrite(skillControls[i].interval.Value, file, section, "Skill" i "Interval")
-        IniWrite(skillBuffControls[i].Value, file, section, "Skill" i "Buff")
+
+        ; 获取下拉框选择的索引并保存
+        modeIndex := skillControls[i].mode.Value
+        IniWrite(modeIndex, file, section, "Skill" i "Mode")
+        DebugLog("保存技能" i "模式: " modeIndex)
     }
 }
 
@@ -516,10 +654,21 @@ SaveMouseSettings(file) {
     global mouseControls, mouseAutoMove
     section := "Mouse"
 
+    ; 保存左键设置
     IniWrite(mouseControls.left.enable.Value, file, section, "LeftClickEnable")
     IniWrite(mouseControls.left.interval.Value, file, section, "LeftClickInterval")
+    leftModeIndex := mouseControls.left.mode.Value
+    IniWrite(leftModeIndex, file, section, "LeftClickMode")
+    DebugLog("保存左键模式: " leftModeIndex)
+
+    ; 保存右键设置
     IniWrite(mouseControls.right.enable.Value, file, section, "RightClickEnable")
     IniWrite(mouseControls.right.interval.Value, file, section, "RightClickInterval")
+    rightModeIndex := mouseControls.right.mode.Value
+    IniWrite(rightModeIndex, file, section, "RightClickMode")
+    DebugLog("保存右键模式: " rightModeIndex)
+
+    ; 保存自动移动设置
     IniWrite(mouseAutoMove.enable.Value, file, section, "MouseAutoMoveEnable")
     IniWrite(mouseAutoMove.interval.Value, file, section, "MouseAutoMoveInterval")
 }
@@ -570,19 +719,40 @@ LoadSettings() {
  * @param {String} file - 设置文件路径
  */
 LoadSkillSettings(file) {
-    global skillControls, skillBuffControls
+    global skillControls, SKILL_MODE_CLICK
 
     Loop 4 {
         try {
             key := IniRead(file, "Skills", "Skill" A_Index "Key", A_Index)
             enabled := IniRead(file, "Skills", "Skill" A_Index "Enable", 1)
             interval := IniRead(file, "Skills", "Skill" A_Index "Interval", 300)
-            buffEnabled := IniRead(file, "Skills", "Skill" A_Index "Buff", 0)
+            mode := Integer(IniRead(file, "Skills", "Skill" A_Index "Mode", SKILL_MODE_CLICK))
 
             skillControls[A_Index].key.Value := key
             skillControls[A_Index].enable.Value := enabled
             skillControls[A_Index].interval.Value := interval
-            skillBuffControls[A_Index].Value := buffEnabled
+
+            ; 设置模式下拉框
+            try {
+                DebugLog("尝试设置技能" A_Index "模式为: " mode)
+                if (mode >= 1 && mode <= 3) {
+                    ; 直接设置Text属性而不是使用Choose方法
+                    if (mode == 1)
+                        skillControls[A_Index].mode.Text := "连点"
+                    else if (mode == 2)
+                        skillControls[A_Index].mode.Text := "维持BUFF"
+                    else if (mode == 3)
+                        skillControls[A_Index].mode.Text := "按住"
+
+                    DebugLog("成功设置技能" A_Index "模式为: " mode)
+                } else {
+                    skillControls[A_Index].mode.Text := "连点"
+                    DebugLog("技能" A_Index "模式值无效: " mode "，使用默认连点模式")
+                }
+            } catch as err {
+                skillControls[A_Index].mode.Text := "连点"
+                DebugLog("设置技能" A_Index "模式出错: " err.Message "，使用默认连点模式")
+            }
         } catch as err {
             DebugLog("加载技能" A_Index "设置出错: " err.Message)
         }
@@ -594,16 +764,67 @@ LoadSkillSettings(file) {
  * @param {String} file - 设置文件路径
  */
 LoadMouseSettings(file) {
-    global mouseControls, mouseAutoMove, mouseAutoMoveEnabled
+    global mouseControls, mouseAutoMove, mouseAutoMoveEnabled, SKILL_MODE_CLICK
 
     try {
+        ; 加载左键设置
         mouseControls.left.enable.Value := IniRead(file, "Mouse", "LeftClickEnable", 1)
         mouseControls.left.interval.Value := IniRead(file, "Mouse", "LeftClickInterval", 80)
+        leftMode := Integer(IniRead(file, "Mouse", "LeftClickMode", SKILL_MODE_CLICK))
+
+        ; 加载右键设置
         mouseControls.right.enable.Value := IniRead(file, "Mouse", "RightClickEnable", 0)
         mouseControls.right.interval.Value := IniRead(file, "Mouse", "RightClickInterval", 300)
+        rightMode := Integer(IniRead(file, "Mouse", "RightClickMode", SKILL_MODE_CLICK))
+
+        ; 加载自动移动设置
         mouseAutoMove.enable.Value := IniRead(file, "Mouse", "MouseAutoMoveEnable", 0)
         mouseAutoMove.interval.Value := IniRead(file, "Mouse", "MouseAutoMoveInterval", 1000)
         mouseAutoMoveEnabled := (mouseAutoMove.enable.Value = 1)
+
+        ; 设置左键模式下拉框
+        try {
+            DebugLog("尝试设置左键模式为: " leftMode)
+            if (leftMode >= 1 && leftMode <= 3) {
+                ; 直接设置Text属性而不是使用Choose方法
+                if (leftMode == 1)
+                    mouseControls.left.mode.Text := "连点"
+                else if (leftMode == 2)
+                    mouseControls.left.mode.Text := "维持BUFF"
+                else if (leftMode == 3)
+                    mouseControls.left.mode.Text := "按住"
+
+                DebugLog("成功设置左键模式为: " leftMode)
+            } else {
+                mouseControls.left.mode.Text := "连点"
+                DebugLog("左键模式值无效: " leftMode "，使用默认连点模式")
+            }
+        } catch as err {
+            mouseControls.left.mode.Text := "连点"
+            DebugLog("设置左键模式出错: " err.Message "，使用默认连点模式")
+        }
+
+        ; 设置右键模式下拉框
+        try {
+            DebugLog("尝试设置右键模式为: " rightMode)
+            if (rightMode >= 1 && rightMode <= 3) {
+                ; 直接设置Text属性而不是使用Choose方法
+                if (rightMode == 1)
+                    mouseControls.right.mode.Text := "连点"
+                else if (rightMode == 2)
+                    mouseControls.right.mode.Text := "维持BUFF"
+                else if (rightMode == 3)
+                    mouseControls.right.mode.Text := "按住"
+
+                DebugLog("成功设置右键模式为: " rightMode)
+            } else {
+                mouseControls.right.mode.Text := "连点"
+                DebugLog("右键模式值无效: " rightMode "，使用默认连点模式")
+            }
+        } catch as err {
+            mouseControls.right.mode.Text := "连点"
+            DebugLog("设置右键模式出错: " err.Message "，使用默认连点模式")
+        }
 
         DebugLog("加载鼠标设置 - 自动移动状态: " . (mouseAutoMoveEnabled ? "启用" : "禁用"))
     } catch as err {
@@ -690,8 +911,10 @@ ReleaseAllKeys() {
     ; 释放技能键
     Loop 4 {
         key := skillControls[A_Index].key.Value
-        if key != ""
+        if key != "" {
             Send "{" key " up}"
+            DebugLog("释放技能" A_Index " 键: " key)
+        }
     }
 
     ; 释放鼠标按键
@@ -699,7 +922,25 @@ ReleaseAllKeys() {
     Click "up left"
     Click "up right"
 
+    ; 重置所有按住模式的按键状态
+    ResetAllHoldKeyStates()
+
+    ; 重置鼠标按键状态
+    ResetMouseButtonStates()
+
     DebugLog("已释放所有按键")
+}
+
+/**
+ * 重置所有按住模式的按键状态
+ */
+ResetAllHoldKeyStates() {
+    ; 使用全局静态变量来跟踪按键状态
+    static keyStates := Map()
+
+    ; 清空按键状态映射
+    keyStates := Map()
+    DebugLog("重置所有按住模式的按键状态")
 }
 
 /**
