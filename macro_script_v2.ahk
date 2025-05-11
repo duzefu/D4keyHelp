@@ -132,7 +132,6 @@ CreateMainGUI() {
     myGui.AddGroupBox("x10 y10 w460 h120", "状态")
     statusText := myGui.AddText("x30 y35 w200 h20", "状态: 未运行")
     myGui.AddButton("x30 y65 w80 h30", "开始/停止").OnEvent("Click", ToggleMacro)
-;    myGui.AddHotkey("x120 y70 w80 h20", "F1")
     myGui.AddText("x220 y70 w200 h20", "F3: 卡快照")
     myGui.AddText("x30 y100 w300 h20", "提示：仅在暗黑破坏神4窗口活动时生效")
     ; 添加技能设置区域
@@ -1204,9 +1203,7 @@ IsSkillActive(x, y) {
 
         ; 提取绿分量
         green := (color >> 8) & 0xFF
-
-
-        ; 判断绿色分量是否显著高于红色和蓝色分量 (适用于HDR颜色)
+        ; 判断绿色分量
         return green > 155
     } catch as err {
         DebugLog("检测技能状态失败: " err.Message)
