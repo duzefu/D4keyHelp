@@ -4,12 +4,15 @@ ProcessSetPriority "High"
 
 ; ========== 全局变量定义 ==========
 ; 核心状态变量
-global DEBUG := true
+global DEBUG := false ; 是否启用调试模式
 global debugLogFile := A_ScriptDir "\debugd4.log"
 global isRunning := false
 global isPaused := false
 global previouslyPaused := false
 global counter := 0
+global D4W := 0 ; Diablo IV 窗口宽度
+global D4H := 0 ; Diablo IV 窗口高度
+global D4helpkey := ""
 
 ; GUI相关变量
 global myGui := ""
@@ -28,19 +31,13 @@ global mouseAutoMoveCurrentPoint := 1
 
 ; 技能模式常量
 global SKILL_MODE_CLICK := 1    ; 连点模式
-global SKILL_MODE_BUFF := 2     ; 维持BUFF模式
+global SKILL_MODE_BUFF := 2     ; BUFF模式
 global SKILL_MODE_HOLD := 3     ; 按住模式
-global skillModeNames := ["连点", "维持BUFF", "按住"]
+global skillModeNames := ["连点", "BUFF", "按住"]
 
 ; 技能位置映射
-global skillPositions := Map(
-    1, {x: 1035, y: 1290},
-    2, {x: 1035 + 84, y: 1290},
-    3, {x: 1035 + 84 * 2, y: 1290},
-    4, {x: 1035 + 84 * 3, y: 1290},
-    "left", {x: 1035 + 84 * 4, y: 1290},
-    "right", {x: 1035 + 84 * 5, y: 1290}
-)
+global skillPositions := Map()
+
 
 ; 定时器相关变量
 global boundSkillTimers := Map()  ; 存储绑定的技能定时器函数
@@ -49,7 +46,59 @@ global timerStates := Map()       ; 用于跟踪定时器状态
 ; 控件变量
 global forceMove := {}            ; 强制移动控件
 global mouseAutoMove := {}        ; 鼠标自动移动控件
+/**
+ * 获取 Diablo IV 窗口的分辨率
+ */
 
+GetDiabloIVResolution() {
+    global D4W, D4H
+
+    ; 获取 Diablo IV 窗口的位置和大小
+    if WinExist("ahk_class Diablo IV Main Window Class") {
+        WinGetPos(, , &D4W, &D4H, "ahk_class Diablo IV Main Window Class")
+        if (D4W > 0 && D4H > 0) {
+            DebugLog("获取 Diablo IV 分辨率: 宽度=" D4W ", 高度=" D4H)
+        } else {
+            MsgBox "获取 Diablo IV 窗口分辨率失败，请检查窗口状态。"
+            D4W := 0
+            D4H := 0
+            DebugLog("重置 Diablo IV 分辨率: 宽度=" D4W ", 高度=" D4H)
+        }
+    } else {
+        MsgBox "无法获取 Diablo IV 窗口尺寸，请检查游戏窗口是否正常。"
+        DebugLog("获取 Diablo IV 窗口尺寸失败")
+        D4W := 0
+        D4H := 0
+    }
+}
+/**
+ * 动态计算技能位置
+ * 基于窗口分辨率 D4W 和 D4H
+ */
+GetDynamicSkillPositions() {
+    global D4W, D4H, skillPositions
+
+    ; 基准分辨率
+    baseWidth := 3840
+    baseHeight := 2160
+
+    ; 比例因子
+    scaleX := D4W / baseWidth
+    scaleY := D4H / baseHeight
+
+    ; 动态计算技能位置
+    skillPositions := Map(
+        1, {x: Round(1550 * scaleX), y: Round(1936 * scaleY)},
+        2, {x: Round((1550 + 126) * scaleX), y: Round(1936 * scaleY)},
+        3, {x: Round((1550 + 126 * 2) * scaleX), y: Round(1936 * scaleY)},
+        4, {x: Round((1550 + 126 * 3) * scaleX), y: Round(1936 * scaleY)},
+        5, {x: Round((1550 + 126 * 4) * scaleX), y: Round(1936 * scaleY)},
+        "left", {x: Round((1550 + 126 * 4) * scaleX), y: Round(1936 * scaleY)},
+        "right", {x: Round((1550 + 126 * 5) * scaleX), y: Round(1936 * scaleY)}
+    )
+
+    DebugLog("动态技能位置已更新: " skillPositions)
+}
 ; ========== 辅助函数 ==========
 /**
  * 调试日志记录函数
@@ -82,12 +131,12 @@ CreateMainGUI() {
     ; 添加主要内容区域
     myGui.AddGroupBox("x10 y10 w460 h120", "状态")
     statusText := myGui.AddText("x30 y35 w200 h20", "状态: 未运行")
-    myGui.AddButton("x30 y65 w120 h30", "开始/停止(F1)").OnEvent("Click", ToggleMacro)
-    myGui.AddText("x170 y70 w200 h20", "F3: 卡移速")
+    myGui.AddButton("x30 y65 w80 h30", "开始/停止").OnEvent("Click", ToggleMacro)
+;    myGui.AddHotkey("x120 y70 w80 h20", "F1")
+    myGui.AddText("x220 y70 w200 h20", "F3: 卡快照")
     myGui.AddText("x30 y100 w300 h20", "提示：仅在暗黑破坏神4窗口活动时生效")
-
     ; 添加技能设置区域
-    myGui.AddGroupBox("x10 y140 w460 h350", "键设置")
+    myGui.AddGroupBox("x10 y140 w460 h410", "键设置")
 
     ; 添加Shift键勾选框
     myGui.AddCheckbox("x30 y165 w100 h20", "按住Shift").OnEvent("Click", ToggleShift)
@@ -96,8 +145,33 @@ CreateMainGUI() {
     myGui.AddText("x30 y195 w60 h20", "按键")
     myGui.AddText("x130 y195 w60 h20", "启用")
     myGui.AddText("x200 y195 w120 h20", "间隔(毫秒)")
+
+    ; 初始化 D4helpkeyInput
+    global D4helpkeyInput
+    D4helpkeyInput := myGui.AddHotkey("x120 y70 w80 h20","f1") ; 热键输入框
+    D4helpkeyInput.OnEvent("Change", BindD4helpkey)    
 }
 
+BindD4helpkey(*) {
+    global D4helpkeyInput, D4helpkey, myGui
+
+    ; 获取用户输入的热键
+    D4helpkey := D4helpkeyInput.Value
+    if (D4helpkey = "") {
+        DebugLog("未输入有效热键")
+        return
+    }
+
+    ; 绑定热键到 ToggleMacro 函数
+    try {
+        Hotkey(D4helpkey, ToggleMacro, "On")
+        DebugLog("热键绑定成功: " D4helpkey)
+        TrayTip "热键绑定", "已绑定热键: " D4helpkey, 2
+    } catch as err {
+        DebugLog("绑定热键失败: " err.Message)
+        TrayTip "热键绑定失败", "请检查输入的热键是否有效", 2
+    }
+}
 /**
  * 创建技能控件
  */
@@ -105,13 +179,13 @@ CreateSkillControls() {
     global myGui, skillControls, skillModeNames, SKILL_MODE_CLICK
 
     skillControls := Map()
-    Loop 4 {
+    Loop 5 {
         yPos := 225 + (A_Index-1) * 30
         myGui.AddText("x30 y" yPos " w60 h20", "技能" A_Index ":")
         skillControls[A_Index] := {
             key: myGui.AddHotkey("x90 y" yPos " w35 h20", A_Index),
             enable: myGui.AddCheckbox("x130 y" yPos " w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y" yPos " w60 h20", "300"),
+            interval: myGui.AddEdit("x200 y" yPos " w60 h20", "20"),
             mode: myGui.AddDropDownList("x270 y" yPos " w100 h120 Choose1", skillModeNames)
         }
     }
@@ -125,18 +199,18 @@ CreateMouseControls() {
 
     mouseControls := {
         left: {
-            enable: myGui.AddCheckbox("x130 y345 w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y345 w60 h20", "80"),
-            mode: myGui.AddDropDownList("x270 y345 w100 h120 Choose1", skillModeNames)
+            enable: myGui.AddCheckbox("x130 y375 w60 h20", "启用"),
+            interval: myGui.AddEdit("x200 y375 w60 h20", "80"),
+            mode: myGui.AddDropDownList("x270 y375 w100 h120 Choose1", skillModeNames)
         },
         right: {
-            enable: myGui.AddCheckbox("x130 y375 w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y375 w60 h20", "300"),
-            mode: myGui.AddDropDownList("x270 y375 w100 h120 Choose1", skillModeNames)
+            enable: myGui.AddCheckbox("x130 y405 w60 h20", "启用"),
+            interval: myGui.AddEdit("x200 y405 w60 h20", "300"),
+            mode: myGui.AddDropDownList("x270 y405 w100 h120 Choose1", skillModeNames)
         }
     }
-    myGui.AddText("x30 y345 w60 h20", "左键:")
-    myGui.AddText("x30 y375 w60 h20", "右键:")
+    myGui.AddText("x30 y375 w60 h20", "左键:")
+    myGui.AddText("x30 y405 w60 h20", "右键:")
 }
 
 /**
@@ -145,32 +219,44 @@ CreateMouseControls() {
 CreateUtilityControls() {
     global myGui, utilityControls, mouseAutoMove
 
-    myGui.AddText("x30 y405 w60 h20", "翻滚:")
-    myGui.AddText("x30 y435 w60 h20", "喝药:")
-    myGui.AddText("x30 y465 w60 h20", "强移:")
+    myGui.AddText("x30 y435 w60 h20", "翻滚:")
+    myGui.AddText("x30 y465 w60 h20", "喝药:")
+    myGui.AddText("x30 y495 w60 h20", "强移:")
+    myGui.AddText("x30 y555 w60 h20", "火盾:")
+    myGui.AddText("x140 y555 w60 h20", "电矛:")
+    myGui.AddText("x260 y555 w60 h20", "电球:")
 
     utilityControls := {
         dodge: {
-            key: myGui.AddText("x90 y405 w35 h20", "空格"),
-            enable: myGui.AddCheckbox("x130 y405 w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y405 w60 h20", "1000")
+            key: myGui.AddText("x90 y435 w35 h20", "空格"),
+            enable: myGui.AddCheckbox("x130 y435 w60 h20", "启用"),
+            interval: myGui.AddEdit("x200 y435 w60 h20", "20")
         },
         potion: {
-            key: myGui.AddHotkey("x90 y435 w35 h20", "q"),
-            enable: myGui.AddCheckbox("x130 y435 w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y435 w60 h20", "15000")
+            key: myGui.AddHotkey("x90 y465 w35 h20", "q"),
+            enable: myGui.AddCheckbox("x130 y465 w60 h20", "启用"),
+            interval: myGui.AddEdit("x200 y465 w60 h20", "3000")
         },
         forceMove: {
-            key: myGui.AddHotkey("x90 y465 w35 h20", "``"),
-            enable: myGui.AddCheckbox("x130 y465 w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y465 w60 h20", "50")
+            key: myGui.AddHotkey("x90 y495 w35 h20", "``"),
+            enable: myGui.AddCheckbox("x130 y495 w60 h20", "启用"),
+            interval: myGui.AddEdit("x200 y495 w60 h20", "50")
+        },
+        huoDun: {  ; 火盾
+            key: myGui.AddHotkey("x90 y555 w35 h20", "2"),
+        },    
+        dianMao: {  ; 电矛
+            key: myGui.AddHotkey("x200 y555 w35 h20", "1"),
+        },
+        dianQiu: {  ; 电球
+            key: myGui.AddHotkey("x310 y555 w35 h20", "e"),
         }
     }
 
     ; 添加鼠标自动移动控件
     mouseAutoMove := {
-        enable: myGui.AddCheckbox("x290 y465 w140 h20", "鼠标自动移动"),
-        interval: myGui.AddEdit("x430 y465 w40 h20", "1000")
+        enable: myGui.AddCheckbox("x30 y525 w100 h20", "鼠标自动移动"),
+        interval: myGui.AddEdit("x160 y525 w40 h20", "1000")
     }
     mouseAutoMove.enable.OnEvent("Click", ToggleMouseAutoMove)
 }
@@ -190,13 +276,13 @@ InitializeGUI() {
     CreateUtilityControls()
 
     ; 添加保存按钮
-    myGui.AddButton("x30 y500 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
+    myGui.AddButton("x30 y590 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
 
     ; 添加状态栏
     statusBar := myGui.AddStatusBar(, "就绪")
 
     ; 显示GUI
-    myGui.Show("w480 h550")
+    myGui.Show("w480 h660")
 
     ; 加载设置
     LoadSettings()
@@ -285,7 +371,7 @@ StartAllTimers() {
 StartSkillTimers() {
     global skillControls, boundSkillTimers, timerStates
 
-    for i in [1, 2, 3, 4] {
+    for i in [1, 2, 3, 4, 5] {
         if (skillControls[i].enable.Value = 1) {
             interval := Integer(skillControls[i].interval.Value)
             if (interval > 0) {
@@ -353,7 +439,7 @@ StopAllTimers() {
     global boundSkillTimers, skillControls
 
     ; 停止技能定时器
-    Loop 4 {
+    Loop 5 {
         if boundSkillTimers.Has(A_Index) {
             SetTimer(boundSkillTimers[A_Index], 0)
             boundSkillTimers.Delete(A_Index)
@@ -387,7 +473,7 @@ StopAllTimers() {
 ; ========== 按键功能实现 ==========
 /**
  * 按下技能键
- * @param {Integer} skillNum - 技能编号(1-4)
+ * @param {Integer} skillNum - 技能编号(1-5)
  */
 PressSkill(skillNum) {
     global isRunning, isPaused, skillControls, skillPositions
@@ -425,20 +511,9 @@ PressSkill(skillNum) {
         DebugLog("按下技能" skillNum " 键(维持BUFF模式): " key)
     }
     else if (skillMode == SKILL_MODE_HOLD) {
-        ; 按住模式 - 按下并保持按键
-        static keyStates := Map()
-
-        ; 如果按键未按下，则按下并记录状态
-        if (!keyStates.Has(skillNum) || !keyStates[skillNum]) {
             Send "{" key " down}"
-            keyStates[skillNum] := true
             DebugLog("按住技能" skillNum " 键: " key)
-
-            ; 设置一个定时器，每5秒检查一次是否需要继续按住
-            checkTimer := CheckHoldKey.Bind(skillNum, key)
-            SetTimer(checkTimer, 5000)
-        }
-    }
+        }    
     else {
         ; 默认连点模式 - 直接发送按键
         SendKey(key)
@@ -446,30 +521,6 @@ PressSkill(skillNum) {
     }
 }
 
-/**
- * 检查按住的按键是否需要释放
- * @param {Integer} skillNum - 技能编号
- * @param {String} key - 按键
- */
-CheckHoldKey(skillNum, key) {
-    global isRunning, isPaused, skillControls, SKILL_MODE_HOLD
-    static keyStates := Map()
-
-    ; 如果宏停止、暂停或模式改变，释放按键
-    if (!isRunning || isPaused ||
-        !skillControls[skillNum].enable.Value ||
-        skillControls[skillNum].mode.Value != SKILL_MODE_HOLD) {
-
-        if (keyStates.Has(skillNum) && keyStates[skillNum]) {
-            Send "{" key " up}"
-            keyStates[skillNum] := false
-            DebugLog("释放技能" skillNum " 键: " key)
-
-            ; 停止定时器
-            SetTimer(CheckHoldKey.Bind(skillNum, key), 0)
-        }
-    }
-}
 
 /**
  * 统一的按键发送函数
@@ -609,7 +660,7 @@ SendKeys() {
  * 保存设置到INI文件
  */
 SaveSettings(*) {
-    global statusBar
+    global statusBar, D4helpkey
     settingsFile := A_ScriptDir "\settings.ini"
 
     try {
@@ -617,6 +668,8 @@ SaveSettings(*) {
         SaveSkillSettings(settingsFile)
         SaveMouseSettings(settingsFile)
         SaveUtilitySettings(settingsFile)
+        ; 保存自定义热键
+        IniWrite(D4helpkey, settingsFile, "Hotkeys", "D4helpkey")
 
         statusBar.Text := "设置已保存"
         DebugLog("所有设置已保存到: " settingsFile)
@@ -634,7 +687,7 @@ SaveSkillSettings(file) {
     global skillControls
     section := "Skills"
 
-    for i in [1, 2, 3, 4] {
+    for i in [1, 2, 3, 4, 5] {
         IniWrite(skillControls[i].key.Value, file, section, "Skill" i "Key")
         IniWrite(skillControls[i].enable.Value, file, section, "Skill" i "Enable")
         IniWrite(skillControls[i].interval.Value, file, section, "Skill" i "Interval")
@@ -689,6 +742,9 @@ SaveUtilitySettings(file) {
     IniWrite(utilityControls.forceMove.key.Value, file, section, "ForceMoveKey")
     IniWrite(utilityControls.forceMove.enable.Value, file, section, "ForceMoveEnable")
     IniWrite(utilityControls.forceMove.interval.Value, file, section, "ForceMoveInterval")
+    IniWrite(utilityControls.huoDun.key.Value, file, section, "HuoDunKey")
+    IniWrite(utilityControls.dianMao.key.Value, file, section, "DianMaoKey")
+    IniWrite(utilityControls.dianQiu.key.Value, file, section, "DianQiuKey")
 }
 
 /**
@@ -708,6 +764,12 @@ LoadSettings() {
         LoadMouseSettings(settingsFile)
         LoadUtilitySettings(settingsFile)
 
+        D4helpkey := IniRead(settingsFile, "Hotkeys", "D4helpkey", "")
+        if (D4helpkey != "") {
+            D4helpkeyInput.Value := D4helpkey
+            Hotkey(D4helpkey, ToggleMacro, "On")
+            DebugLog("加载自定义热键: " D4helpkey)
+        }
         DebugLog("所有设置已从文件加载: " settingsFile)
     } catch as err {
         DebugLog("加载设置出错: " err.Message)
@@ -721,11 +783,11 @@ LoadSettings() {
 LoadSkillSettings(file) {
     global skillControls, SKILL_MODE_CLICK
 
-    Loop 4 {
+    Loop 5 {
         try {
             key := IniRead(file, "Skills", "Skill" A_Index "Key", A_Index)
             enabled := IniRead(file, "Skills", "Skill" A_Index "Enable", 1)
-            interval := IniRead(file, "Skills", "Skill" A_Index "Interval", 300)
+            interval := IniRead(file, "Skills", "Skill" A_Index "Interval", 20)
             mode := Integer(IniRead(file, "Skills", "Skill" A_Index "Mode", SKILL_MODE_CLICK))
 
             skillControls[A_Index].key.Value := key
@@ -740,7 +802,7 @@ LoadSkillSettings(file) {
                     if (mode == 1)
                         skillControls[A_Index].mode.Text := "连点"
                     else if (mode == 2)
-                        skillControls[A_Index].mode.Text := "维持BUFF"
+                        skillControls[A_Index].mode.Text := "BUFF"
                     else if (mode == 3)
                         skillControls[A_Index].mode.Text := "按住"
 
@@ -790,7 +852,7 @@ LoadMouseSettings(file) {
                 if (leftMode == 1)
                     mouseControls.left.mode.Text := "连点"
                 else if (leftMode == 2)
-                    mouseControls.left.mode.Text := "维持BUFF"
+                    mouseControls.left.mode.Text := "BUFF"
                 else if (leftMode == 3)
                     mouseControls.left.mode.Text := "按住"
 
@@ -812,7 +874,7 @@ LoadMouseSettings(file) {
                 if (rightMode == 1)
                     mouseControls.right.mode.Text := "连点"
                 else if (rightMode == 2)
-                    mouseControls.right.mode.Text := "维持BUFF"
+                    mouseControls.right.mode.Text := "BUFF"
                 else if (rightMode == 3)
                     mouseControls.right.mode.Text := "按住"
 
@@ -841,15 +903,18 @@ LoadUtilitySettings(file) {
 
     try {
         utilityControls.dodge.enable.Value := IniRead(file, "Utility", "DodgeEnable", 0)
-        utilityControls.dodge.interval.Value := IniRead(file, "Utility", "DodgeInterval", 1000)
+        utilityControls.dodge.interval.Value := IniRead(file, "Utility", "DodgeInterval", 20)
 
         utilityControls.potion.key.Value := IniRead(file, "Utility", "PotionKey", "q")
         utilityControls.potion.enable.Value := IniRead(file, "Utility", "PotionEnable", 0)
-        utilityControls.potion.interval.Value := IniRead(file, "Utility", "PotionInterval", 15000)
+        utilityControls.potion.interval.Value := IniRead(file, "Utility", "PotionInterval", 3000)
 
         utilityControls.forceMove.key.Value := IniRead(file, "Utility", "ForceMoveKey", "``")
         utilityControls.forceMove.enable.Value := IniRead(file, "Utility", "ForceMoveEnable", 0)
         utilityControls.forceMove.interval.Value := IniRead(file, "Utility", "ForceMoveInterval", 50)
+        utilityControls.huoDun.key.Value := IniRead(file, "Utility", "HuoDunKey", "2")
+        utilityControls.dianMao.key.Value := IniRead(file, "Utility", "DianMaoKey", "1")
+        utilityControls.dianQiu.key.Value := IniRead(file, "Utility", "DianQiuKey", "e")
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
     }
@@ -909,7 +974,7 @@ ReleaseAllKeys() {
     Send "{Alt up}"
 
     ; 释放技能键
-    Loop 4 {
+    Loop 5 {
         key := skillControls[A_Index].key.Value
         if key != "" {
             Send "{" key " up}"
@@ -985,14 +1050,60 @@ ToggleMouseAutoMove(*) {
 ; ========== 热键设置 ==========
 #HotIf WinActive("ahk_class Diablo IV Main Window Class")
 
+; 添加热键支持
 *F1::ToggleMacro()  ; * 表示忽略所有修饰键
-F3::SendKeys()
+
+F3::{
+    ; 确保从配置对象获取最新值
+    dianQiu := utilityControls.dianQiu.key.Value
+    huoDunKey := utilityControls.huoDun.key.Value
+    dianMaoKey := utilityControls.dianMao.key.Value
+
+    ; 添加错误处理
+    try {
+        ; 执行连招
+        Loop 3 {
+            Send "{Blind}{" dianQiu "}"  ; 使用Blind模式保持Shift状态
+            Sleep 225
+        }
+        Send "{Blind}{" huoDunKey "}"
+        Sleep 3500  ; 长延迟需要额外处理
+        Send "{Blind}{" dianMaoKey "}"
+        Sleep 125
+        ToggleMacro()
+    } catch as err {
+        DebugLog("F3连招出错: " err.Message)
+        TrayTip "连招错误", "请检查技能键配置", 3
+    }
+}
 
 Tab::{
     global isRunning, isPaused
 
     ; 发送原始Tab键
     Send "{Tab}"
+
+    ; 如果宏未运行，不做其他处理
+    if !isRunning
+        return
+
+    ; 切换暂停状态
+    isPaused := !isPaused
+
+    if isPaused {
+        StopAllTimers()
+        UpdateStatus("已暂停", "宏已暂停")
+    } else {
+        StartAllTimers()
+        UpdateStatus("运行中", "宏已继续")
+    }
+}
+
+Enter::{
+    global isRunning, isPaused
+
+    ; 发送原始Tab键
+    Send "{Enter}"
 
     ; 如果宏未运行，不做其他处理
     if !isRunning
@@ -1089,13 +1200,14 @@ PressForceMove() {
 IsSkillActive(x, y) {
     try {
         ; 获取指定坐标的像素颜色
-        color := PixelGetColor(x, y)
+        color := PixelGetColor(x, y, "RGB")
 
-        ; 提取绿色分量 (中间两位十六进制)
+        ; 提取绿分量
         green := (color >> 8) & 0xFF
 
-        ; 判断绿色分量是否大于60
-        return green > 60
+
+        ; 判断绿色分量是否显著高于红色和蓝色分量 (适用于HDR颜色)
+        return green > 155
     } catch as err {
         DebugLog("检测技能状态失败: " err.Message)
         return false
