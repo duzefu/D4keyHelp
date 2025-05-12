@@ -74,7 +74,7 @@ GetDynamicSkillPositions() {
     ; 技能条基准起点和间距
     baseX := 1550
     baseY := 1940
-    offset := 126
+    offset := 127
 
     ; 动态计算技能位置
     skillPositions := Map()
@@ -196,9 +196,10 @@ CreateUtilityControls() {
     myGui.AddText("x30 y435 w60 h20", "翻滚:")
     myGui.AddText("x30 y465 w60 h20", "喝药:")
     myGui.AddText("x30 y495 w60 h20", "强移:")
-    myGui.AddText("x30 y555 w60 h20", "火盾:")
-    myGui.AddText("x140 y555 w60 h20", "电矛:")
-    myGui.AddText("x260 y555 w60 h20", "电球:")
+    myGui.AddText("x30 y560 w60 h20", "火盾:")
+    myGui.AddText("x110 y560 w60 h20", "电矛:")
+    myGui.AddText("x190 y560 w60 h20", "电球:")
+    myGui.AddText("x280 y560 w60 h20", "冰盾:")
 
     utilityControls := {
         dodge: {
@@ -217,13 +218,16 @@ CreateUtilityControls() {
             interval: myGui.AddEdit("x200 y495 w60 h20", "50")
         },
         huoDun: {  ; 火盾
-            key: myGui.AddHotkey("x90 y555 w35 h20", "2"),
+            key: myGui.AddHotkey("x70 y555 w35 h20", "2"),
         },    
         dianMao: {  ; 电矛
-            key: myGui.AddHotkey("x200 y555 w35 h20", "1"),
+            key: myGui.AddHotkey("x150 y555 w35 h20", "1"),
         },
         dianQiu: {  ; 电球
-            key: myGui.AddHotkey("x310 y555 w35 h20", "e"),
+            key: myGui.AddHotkey("x230 y555 w35 h20", "e"),
+        },
+        binDun: {  ; 冰盾
+            key: myGui.AddHotkey("x320 y555 w35 h20", "3"),
         }
     }
 
@@ -716,6 +720,7 @@ SaveUtilitySettings(file) {
     IniWrite(utilityControls.huoDun.key.Value, file, section, "HuoDunKey")
     IniWrite(utilityControls.dianMao.key.Value, file, section, "DianMaoKey")
     IniWrite(utilityControls.dianQiu.key.Value, file, section, "DianQiuKey")
+    IniWrite(utilityControls.binDun.key.Value, file, section, "BinDunKey")
 }
 
 /**
@@ -880,6 +885,7 @@ LoadUtilitySettings(file) {
         utilityControls.huoDun.key.Value := IniRead(file, "Utility", "HuoDunKey", "2")
         utilityControls.dianMao.key.Value := IniRead(file, "Utility", "DianMaoKey", "1")
         utilityControls.dianQiu.key.Value := IniRead(file, "Utility", "DianQiuKey", "e")
+        utilityControls.binDun.key.Value := IniRead(file, "Utility", "BinDunKey", "3")
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
     }
@@ -1021,21 +1027,24 @@ ToggleMouseAutoMove(*) {
 ; 添加热键支持
 F3::{
     ; 确保从配置对象获取最新值
-    dianQiu := utilityControls.dianQiu.key.Value
+    dianQiuKey := utilityControls.dianQiu.key.Value
     huoDunKey := utilityControls.huoDun.key.Value
     dianMaoKey := utilityControls.dianMao.key.Value
+    binDunKey := utilityControls.binDun.key.Value
 
     ; 添加错误处理
     try {
         ; 执行连招
+        Send "{Blind}{" binDunKey "}"  ; 使用Blind模式保持Shift状态
+        Sleep 75
         Loop 3 {
-            Send "{Blind}{" dianQiu "}"  ; 使用Blind模式保持Shift状态
-            Sleep 225
+            Send "{Blind}{" dianQiuKey "}"
+            Sleep 250
         }
         Send "{Blind}{" huoDunKey "}"
-        Sleep 3500  ; 长延迟需要额外处理
+        Sleep 2700  ; 长延迟需要额外处理
         Send "{Blind}{" dianMaoKey "}"
-        Sleep 125
+        Sleep 550
         ToggleMacro()
     } catch as err {
         DebugLog("F3连招出错: " err.Message)
@@ -1191,9 +1200,11 @@ IsSkillActive(x, y) {
         color := PixelGetColor(x, y, "RGB")
 
         ; 提取绿分量
-        green := (color >> 8) & 0xFF
-        ; 判断绿色分量
-        return green > 155
+        r := (color >> 16) & 0xFF
+        g := (color >> 8) & 0xFF
+        b := color & 0xFF
+        ; 判断绿色分量高于蓝色分量
+        return (g > b + 100)
     } catch as err {
         DebugLog("检测技能状态失败: " err.Message)
         return false
@@ -1211,8 +1222,8 @@ MoveMouseToNextPoint() {
 
     try {
         ; 获取屏幕分辨率
-        screenWidth := A_ScreenWidth
-        screenHeight := A_ScreenHeight
+        screenWidth := D4W
+        screenHeight := D4H
 
         ; 计算六个点的位置
         points := [
