@@ -1039,7 +1039,7 @@ F3::{
         Sleep 75
         Loop 3 {
             Send "{Blind}{" dianQiuKey "}"
-            Sleep 250
+            Sleep 550
         }
         Send "{Blind}{" huoDunKey "}"
         Sleep 2700  ; 长延迟需要额外处理
