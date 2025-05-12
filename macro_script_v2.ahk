@@ -12,7 +12,7 @@ global previouslyPaused := false
 global counter := 0
 global D4W := 0 ; Diablo IV 窗口宽度
 global D4H := 0 ; Diablo IV 窗口高度
-global D4helpkey := ""
+;global D4helpkey := ""
 
 ; GUI相关变量
 global myGui := ""
@@ -52,23 +52,9 @@ global mouseAutoMove := {}        ; 鼠标自动移动控件
 
 GetDiabloIVResolution() {
     global D4W, D4H
-
     ; 获取 Diablo IV 窗口的位置和大小
     if WinExist("ahk_class Diablo IV Main Window Class") {
         WinGetPos(, , &D4W, &D4H, "ahk_class Diablo IV Main Window Class")
-        if (D4W > 0 && D4H > 0) {
-            DebugLog("获取 Diablo IV 分辨率: 宽度=" D4W ", 高度=" D4H)
-        } else {
-            MsgBox "获取 Diablo IV 窗口分辨率失败，请检查窗口状态。"
-            D4W := 0
-            D4H := 0
-            DebugLog("重置 Diablo IV 分辨率: 宽度=" D4W ", 高度=" D4H)
-        }
-    } else {
-        MsgBox "无法获取 Diablo IV 窗口尺寸，请检查游戏窗口是否正常。"
-        DebugLog("获取 Diablo IV 窗口尺寸失败")
-        D4W := 0
-        D4H := 0
     }
 }
 /**
@@ -82,22 +68,32 @@ GetDynamicSkillPositions() {
     baseWidth := 3840
     baseHeight := 2160
 
-    ; 比例因子
-    scaleX := D4W / baseWidth
-    scaleY := D4H / baseHeight
+    ; 比例因子，采用较小的缩放因子以保证纵横比不变
+    scale := Min(D4W / baseWidth, D4H / baseHeight)
+
+    ; 技能条基准起点和间距
+    baseX := 1550
+    baseY := 1940
+    offset := 126
 
     ; 动态计算技能位置
-    skillPositions := Map(
-        1, {x: Round(1550 * scaleX), y: Round(1936 * scaleY)},
-        2, {x: Round((1550 + 126) * scaleX), y: Round(1936 * scaleY)},
-        3, {x: Round((1550 + 126 * 2) * scaleX), y: Round(1936 * scaleY)},
-        4, {x: Round((1550 + 126 * 3) * scaleX), y: Round(1936 * scaleY)},
-        5, {x: Round((1550 + 126 * 4) * scaleX), y: Round(1936 * scaleY)},
-        "left", {x: Round((1550 + 126 * 4) * scaleX), y: Round(1936 * scaleY)},
-        "right", {x: Round((1550 + 126 * 5) * scaleX), y: Round(1936 * scaleY)}
-    )
-
-    DebugLog("动态技能位置已更新: " skillPositions)
+    skillPositions := Map()
+    Loop 5 {
+        idx := A_Index
+        skillPositions[idx] := {
+            x: Round((baseX + offset * (idx - 1)) * scale),
+            y: Round(baseY * scale)
+        }
+    }
+    ; 左键和右键位置
+    skillPositions["left"] := {
+        x: Round((baseX + offset * 4) * scale),
+        y: Round(baseY * scale)
+    }
+    skillPositions["right"] := {
+        x: Round((baseX + offset * 5) * scale),
+        y: Round(baseY * scale)
+    }
 }
 ; ========== 辅助函数 ==========
 /**
@@ -145,32 +141,11 @@ CreateMainGUI() {
     myGui.AddText("x130 y195 w60 h20", "启用")
     myGui.AddText("x200 y195 w120 h20", "间隔(毫秒)")
 
-    ; 初始化 D4helpkeyInput
-    global D4helpkeyInput
-    D4helpkeyInput := myGui.AddHotkey("x120 y70 w80 h20","f1") ; 热键输入框
-    D4helpkeyInput.OnEvent("Change", BindD4helpkey)    
+
+    ;myGui.AddHotkey("x120 y70 w80 h20","f1") ; 热键输入框
+ 
 }
 
-BindD4helpkey(*) {
-    global D4helpkeyInput, D4helpkey, myGui
-
-    ; 获取用户输入的热键
-    D4helpkey := D4helpkeyInput.Value
-    if (D4helpkey = "") {
-        DebugLog("未输入有效热键")
-        return
-    }
-
-    ; 绑定热键到 ToggleMacro 函数
-    try {
-        Hotkey(D4helpkey, ToggleMacro, "On")
-        DebugLog("热键绑定成功: " D4helpkey)
-        TrayTip "热键绑定", "已绑定热键: " D4helpkey, 2
-    } catch as err {
-        DebugLog("绑定热键失败: " err.Message)
-        TrayTip "热键绑定失败", "请检查输入的热键是否有效", 2
-    }
-}
 /**
  * 创建技能控件
  */
@@ -273,7 +248,6 @@ InitializeGUI() {
     CreateSkillControls()
     CreateMouseControls()
     CreateUtilityControls()
-
     ; 添加保存按钮
     myGui.AddButton("x30 y590 w100 h30", "保存设置").OnEvent("Click", SaveSettings)
 
@@ -659,7 +633,7 @@ SendKeys() {
  * 保存设置到INI文件
  */
 SaveSettings(*) {
-    global statusBar, D4helpkey
+    global statusBar
     settingsFile := A_ScriptDir "\settings.ini"
 
     try {
@@ -667,8 +641,6 @@ SaveSettings(*) {
         SaveSkillSettings(settingsFile)
         SaveMouseSettings(settingsFile)
         SaveUtilitySettings(settingsFile)
-        ; 保存自定义热键
-        IniWrite(D4helpkey, settingsFile, "Hotkeys", "D4helpkey")
 
         statusBar.Text := "设置已保存"
         DebugLog("所有设置已保存到: " settingsFile)
@@ -763,12 +735,6 @@ LoadSettings() {
         LoadMouseSettings(settingsFile)
         LoadUtilitySettings(settingsFile)
 
-        D4helpkey := IniRead(settingsFile, "Hotkeys", "D4helpkey", "")
-        if (D4helpkey != "") {
-            D4helpkeyInput.Value := D4helpkey
-            Hotkey(D4helpkey, ToggleMacro, "On")
-            DebugLog("加载自定义热键: " D4helpkey)
-        }
         DebugLog("所有设置已从文件加载: " settingsFile)
     } catch as err {
         DebugLog("加载设置出错: " err.Message)
@@ -933,6 +899,9 @@ ToggleMacro(*) {
     isRunning := !isRunning
 
     if isRunning {
+        ; 初始化窗口分辨率和技能位置
+        GetDiabloIVResolution()
+        GetDynamicSkillPositions()
         ; 重置暂停状态
         isPaused := false
         previouslyPaused := false
@@ -1048,10 +1017,8 @@ ToggleMouseAutoMove(*) {
 
 ; ========== 热键设置 ==========
 #HotIf WinActive("ahk_class Diablo IV Main Window Class")
-
+*F1::ToggleMacro()
 ; 添加热键支持
-*F1::ToggleMacro()  ; * 表示忽略所有修饰键
-
 F3::{
     ; 确保从配置对象获取最新值
     dianQiu := utilityControls.dianQiu.key.Value
@@ -1103,6 +1070,28 @@ Enter::{
 
     ; 发送原始Tab键
     Send "{Enter}"
+
+    ; 如果宏未运行，不做其他处理
+    if !isRunning
+        return
+
+    ; 切换暂停状态
+    isPaused := !isPaused
+
+    if isPaused {
+        StopAllTimers()
+        UpdateStatus("已暂停", "宏已暂停")
+    } else {
+        StartAllTimers()
+        UpdateStatus("运行中", "宏已继续")
+    }
+}
+
+NumpadEnter::{
+    global isRunning, isPaused
+
+    ; 发送原始NumpadEnter键
+    Send "{NumpadEnter}"
 
     ; 如果宏未运行，不做其他处理
     if !isRunning
