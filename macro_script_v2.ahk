@@ -13,6 +13,8 @@ global counter := 0
 global D4W := 0 ; Diablo IV 窗口宽度
 global D4H := 0 ; Diablo IV 窗口高度
 global currentHotkey := "F1"
+global BASE_WIDTH := 3840
+global BASE_HEIGHT := 2160
 
 ; GUI相关变量
 global myGui := ""
@@ -28,7 +30,7 @@ global shiftEnabled := false
 global skillActiveState := false
 global mouseAutoMoveEnabled := false
 global mouseAutoMoveCurrentPoint := 1
-
+global imagePauseMode := 2 ; Default value, assuming "2" corresponds to "Disabled"
 ; 技能模式常量
 global SKILL_MODE_CLICK := 1    ; 连点模式
 global SKILL_MODE_BUFF := 2     ; BUFF模式
@@ -47,46 +49,51 @@ global timerStates := Map()       ; 用于跟踪定时器状态
 global forceMove := {}            ; 强制移动控件
 global mouseAutoMove := {}        ; 鼠标自动移动控件
 /**
- * 获取 Diablo IV 窗口的分辨率
+ * 获取窗口分辨率并计算缩放比例
+ * @returns {Object} - 包含分辨率和缩放比例的对象 {width, height, scaleW, scaleH, scale}
  */
+GetWindowResolutionAndScale() {
+    global BASE_WIDTH, BASE_HEIGHT
+    D4W := 0, D4H := 0
 
-GetDiabloIVResolution() {
-    global D4W, D4H
-    ; 获取 Diablo IV 窗口的位置和大小
+    ; 获取窗口分辨率
     if WinExist("ahk_class Diablo IV Main Window Class") {
         WinGetPos(, , &D4W, &D4H, "ahk_class Diablo IV Main Window Class")
     }
+
+    ; 计算缩放比例
+    scaleW := D4W / BASE_WIDTH
+    scaleH := D4H / BASE_HEIGHT
+    scale := Min(scaleW, scaleH)
+
+    return {width: D4W, height: D4H, scaleW: scaleW, scaleH: scaleH, scale: scale}
 }
+
 /**
  * 动态计算技能位置
- * 基于窗口分辨率 D4W 和 D4H
+ * 基于窗口分辨率和缩放比例
  */
 GetDynamicSkillPositions() {
-    global D4W, D4H, skillPositions
-
-    GetDiabloIVResolution()
-
-    baseWidth := 3840
-    baseHeight := 2160
-    scale := Min(D4W / baseWidth, D4H / baseHeight)
+    global skillPositions
+    res := GetWindowResolutionAndScale()
     baseX := 1550, baseY := 1940, offset := 127
 
-    ; 清空
+    ; 清空并填充技能位置
     skillPositions.Clear()
     Loop 5 {
         idx := A_Index
         skillPositions[idx] := {
-            x: Round((baseX + offset * (idx - 1)) * scale),
-            y: Round(baseY * scale)
+            x: Round((baseX + offset * (idx - 1)) * res.scale),
+            y: Round(baseY * res.scale)
         }
     }
     skillPositions["left"] := {
-        x: Round((baseX + offset * 4) * scale),
-        y: Round(baseY * scale)
+        x: Round((baseX + offset * 4) * res.scale),
+        y: Round(baseY * res.scale)
     }
     skillPositions["right"] := {
-        x: Round((baseX + offset * 5) * scale),
-        y: Round(baseY * scale)
+        x: Round((baseX + offset * 5) * res.scale),
+        y: Round(baseY * res.scale)
     }
 }
 ; ========== 辅助函数 ==========
@@ -111,7 +118,7 @@ DebugLog(message) {
  * 创建主GUI界面
  */
 CreateMainGUI() {
-    global myGui, statusText, statusBar, hotkeyControl
+    global myGui, statusText, statusBar, hotkeyControl, imagePauseMode
 
     ; 创建主窗口
     myGui := Gui("", "暗黑4助手 v2.2")
@@ -124,6 +131,9 @@ CreateMainGUI() {
     myGui.AddButton("x30 y65 w80 h30", "开始/停止").OnEvent("Click", ToggleMacro)
     myGui.AddText("x220 y70 w200 h20", "F3: 卡快照")
     myGui.AddText("x30 y100 w300 h20", "提示：仅在暗黑破坏神4窗口活动时生效")
+    ; 添加识图暂停下拉框
+    myGui.AddText("x300 y70 w70 h20", "自动暂停：")
+    imagePauseMode := myGui.AddDropDownList("x360 y65 w50", ["启用", "禁用"])
     ; 添加技能设置区域
     myGui.AddGroupBox("x10 y140 w460 h410", "键设置")
 
@@ -145,7 +155,6 @@ CreateMainGUI() {
 UpdateBuffThresholdDisplay(ctrl, *) {
     buffThresholdValue.Text := ctrl.Value
     ; 如果需要实时获取值也可以在此处更新阈值
-    globalThreshold := ctrl.Value
 }
 /**
  * 创建技能控件
@@ -367,7 +376,7 @@ StartAllTimers() {
 
     ; 启动鼠标自动移动定时器
     StartMouseAutoMoveTimer()
-
+ 
     DebugLog("所有定时器已启动")
 }
 
@@ -792,6 +801,7 @@ SaveUtilitySettings(file) {
     IniWrite(utilityControls.dianQiu.key.Value, file, section, "DianQiuKey")
     IniWrite(utilityControls.binDun.key.Value, file, section, "BinDunKey")
     IniWrite(hotkeyControl.Value, file, "Global", "StartStopKey")
+    IniWrite(imagePauseMode.Value, file, "Global", "ImagePauseMode")
 }
 
 /**
@@ -959,6 +969,7 @@ LoadUtilitySettings(file) {
         utilityControls.dianMao.key.Value := IniRead(file, "Utility", "DianMaoKey", "1")
         utilityControls.dianQiu.key.Value := IniRead(file, "Utility", "DianQiuKey", "e")
         utilityControls.binDun.key.Value := IniRead(file, "Utility", "BinDunKey", "3")
+        imagePauseMode.Value := IniRead(file, "Global", "ImagePauseMode", 2)
         savedHotkey := IniRead(file, "Global", "StartStopKey", "F1")
         hotkeyControl.Value := savedHotkey
     } catch as err {
@@ -975,7 +986,8 @@ ToggleMacro(*) {
 
     ; 确保完全停止所有定时器
     StopAllTimers()
-
+    StopImagePauseTimer() ; 停止识图定时器
+    StopWindowCheckTimer() ; 停止窗口检测定时器
     ; 切换运行状态
     isRunning := !isRunning
 
@@ -992,6 +1004,8 @@ ToggleMacro(*) {
         ; 只有在暗黑4窗口激活时才启动定时器
         if WinActive("ahk_class Diablo IV Main Window Class") {
             StartAllTimers()
+            StartImagePauseTimer() ; 启动识图定时器
+            StartWindowCheckTimer() ; 启动窗口检测定时器
             UpdateStatus("运行中", "宏已启动")
         } else {
             isPaused := true
@@ -1193,8 +1207,89 @@ NumpadEnter::{
     }
 }
 
-; 设置窗口状态检查定时器
-SetTimer CheckWindow, 100
+; ========== 定时器控制 ==========
+StartWindowCheckTimer() {
+    SetTimer CheckWindow, 100
+}
+StopWindowCheckTimer() {
+    SetTimer CheckWindow, 0
+}
+
+; ========== 识图自动暂停/启动功能 ==========
+/**
+ * 检查指定坐标的红色分量是否大于绿色100
+ * @returns {Boolean} - 是否触发
+ */ 
+
+StartImagePauseTimer() {
+    SetTimer AutoPauseByColor, 50
+}
+StopImagePauseTimer() {
+    SetTimer AutoPauseByColor, 0
+}
+
+/**
+ * 检查颜色时使用缩放比例
+ */
+CheckPauseByColor() {
+    res := GetWindowResolutionAndScale()
+
+    try {
+        ; 定义检测点的坐标
+        x1 := Round(1605 * res.scaleW), x2 := Round(1435 * res.scaleW)
+        y1 := Round(85 * res.scaleH), y2 := Round(95 * res.scaleH)
+
+        ; 检测颜色
+        colors := [
+            PixelGetColor(x1, y1, "RGB"),
+            PixelGetColor(x1, y2, "RGB"),
+            PixelGetColor(x2, y1, "RGB"),
+            PixelGetColor(x2, y2, "RGB")
+        ]
+
+        ; 统计满足红色条件的点数
+        hitCount := 0
+        for color in colors {
+            r := (color >> 16) & 0xFF, g := (color >> 8) & 0xFF, b := color & 0xFF
+            if (r > 200 && g < 100 && b < 100)
+                hitCount++
+        }
+
+        ; 至少命中2个点才返回 true
+        return hitCount >= 2
+    } catch as err {
+        DebugLog("颜色检测失败: " err.Message)
+    }
+    return false
+}
+
+/**
+ * 定时检测颜色并自动暂停/启动宏
+ */
+AutoPauseByColor() {
+    global isRunning, isPaused, imagePauseMode
+    ; 仅在启用时才执行
+    if (!isRunning || imagePauseMode.Value != 1)
+        return
+
+    if (CheckPauseByColor()) {
+        ; 检测到红色时启动
+        if (isPaused) {
+            isPaused := false
+            StartAllTimers()
+            UpdateStatus("运行中", "检测到红色，自动启动")
+            DebugLog("识图触发自动启动")
+        }
+    } else {
+        ; 红色消失时暂停
+        if (!isPaused) {
+            isPaused := true
+            StopAllTimers()
+            UpdateStatus("已暂停", "红色消失，自动暂停")
+            DebugLog("识图触发自动暂停")
+        }
+    }
+}
 
 ; ========== 功能键实现 ==========
 /**
@@ -1267,7 +1362,7 @@ IsSkillActive(x, y) {
             b := color & 0xFF
             return (g > b + buffThreshold.Value)
         } catch
-            Sleep 50
+            Sleep 5
     }
     DebugLog("检测技能状态失败: 多次尝试无效")
     return false
@@ -1283,18 +1378,17 @@ MoveMouseToNextPoint() {
         return
 
     try {
-        ; 获取屏幕分辨率
-        screenWidth := D4W
-        screenHeight := D4H
+        ; 获取分辨率和缩放比例
+        res := GetWindowResolutionAndScale()
 
         ; 计算六个点的位置
         points := [
-            {x: screenWidth * 0.15, y: screenHeight * 0.15},  ; 左上角
-            {x: screenWidth * 0.5, y: screenHeight * 0.15},   ; 中上角
-            {x: screenWidth * 0.85, y: screenHeight * 0.15},  ; 右上角
-            {x: screenWidth * 0.85, y: screenHeight * 0.85},  ; 右下角
-            {x: screenWidth * 0.5, y: screenHeight * 0.85},   ; 中下角
-            {x: screenWidth * 0.15, y: screenHeight * 0.85}   ; 左下角
+            {x: Round(0.15 * res.width), y: Round(0.15 * res.height)},  ; 左上角
+            {x: Round(0.5 * res.width), y: Round(0.15 * res.height)},   ; 中上角
+            {x: Round(0.85 * res.width), y: Round(0.15 * res.height)},  ; 右上角
+            {x: Round(0.85 * res.width), y: Round(0.85 * res.height)},  ; 右下角
+            {x: Round(0.5 * res.width), y: Round(0.85 * res.height)},   ; 中下角
+            {x: Round(0.15 * res.width), y: Round(0.85 * res.height)}   ; 左下角
         ]
 
         ; 移动鼠标到当前点
@@ -1309,3 +1403,4 @@ MoveMouseToNextPoint() {
         DebugLog("鼠标自动移动失败: " err.Message)
     }
 }
+
