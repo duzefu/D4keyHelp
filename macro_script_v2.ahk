@@ -12,7 +12,7 @@ global previouslyPaused := false
 global counter := 0
 global D4W := 0 ; Diablo IV 窗口宽度
 global D4H := 0 ; Diablo IV 窗口高度
-;global D4helpkey := ""
+global currentHotkey := "F1"
 
 ; GUI相关变量
 global myGui := ""
@@ -64,20 +64,15 @@ GetDiabloIVResolution() {
 GetDynamicSkillPositions() {
     global D4W, D4H, skillPositions
 
-    ; 基准分辨率
+    GetDiabloIVResolution()
+
     baseWidth := 3840
     baseHeight := 2160
-
-    ; 比例因子，采用较小的缩放因子以保证纵横比不变
     scale := Min(D4W / baseWidth, D4H / baseHeight)
+    baseX := 1550, baseY := 1940, offset := 127
 
-    ; 技能条基准起点和间距
-    baseX := 1550
-    baseY := 1940
-    offset := 127
-
-    ; 动态计算技能位置
-    skillPositions := Map()
+    ; 清空
+    skillPositions.Clear()
     Loop 5 {
         idx := A_Index
         skillPositions[idx] := {
@@ -85,7 +80,6 @@ GetDynamicSkillPositions() {
             y: Round(baseY * scale)
         }
     }
-    ; 左键和右键位置
     skillPositions["left"] := {
         x: Round((baseX + offset * 4) * scale),
         y: Round(baseY * scale)
@@ -117,10 +111,10 @@ DebugLog(message) {
  * 创建主GUI界面
  */
 CreateMainGUI() {
-    global myGui, statusText, statusBar
+    global myGui, statusText, statusBar, hotkeyControl
 
     ; 创建主窗口
-    myGui := Gui("", "暗黑4助手 v2.1")
+    myGui := Gui("", "暗黑4助手 v2.2")
     myGui.BackColor := "FFFFFF"
     myGui.SetFont("s10", "Microsoft YaHei UI")
 
@@ -141,11 +135,18 @@ CreateMainGUI() {
     myGui.AddText("x130 y195 w60 h20", "启用")
     myGui.AddText("x200 y195 w120 h20", "间隔(毫秒)")
 
-
-    ;myGui.AddHotkey("x120 y70 w80 h20","f1") ; 热键输入框
- 
+    hotkeyControl := myGui.AddHotkey("x120 y70 w80 h20", currentHotkey)
+    hotkeyControl.OnEvent("Change", (ctrl, *) => LoadGlobalHotkey())
+    myGui.AddText("x130 y165", "BUFF检测阈值:")
+    global buffThreshold := myGui.AddSlider("x260 y165 w100 Range50-200", 100)
+    global buffThresholdValue := myGui.AddText("x360 y165 w30 h20", buffThreshold.Value)
+    buffThreshold.OnEvent("Change", UpdateBuffThresholdDisplay)
 }
-
+UpdateBuffThresholdDisplay(ctrl, *) {
+    buffThresholdValue.Text := ctrl.Value
+    ; 如果需要实时获取值也可以在此处更新阈值
+    globalThreshold := ctrl.Value
+}
 /**
  * 创建技能控件
  */
@@ -320,6 +321,34 @@ UpdateStatus(status, barText) {
     statusText.Value := "状态: " status
     statusBar.Text := barText
     DebugLog("状态更新: " status " | " barText)
+}
+
+
+LoadGlobalHotkey() {
+    global currentHotkey, hotkeyControl, myGui
+    
+    ; 跳过初始化时的空值
+    if (hotkeyControl.Value = "")
+        return
+    
+    try {
+        ; 移除旧热键绑定
+        if (currentHotkey != "") {
+            if Hotkey(currentHotkey, ToggleMacro, "Off")
+                DebugLog("已解除旧热键: " currentHotkey)
+        }
+        
+        ; 获取并验证新热键
+        newHotkey := hotkeyControl.Value
+      
+        ; 注册新热键
+        Hotkey(newHotkey, ToggleMacro, "On")
+        currentHotkey := newHotkey
+        DebugLog("成功注册热键: " newHotkey)  
+        ; 更新状态栏
+        myGui.statusBar.Text := "热键已更新: " newHotkey
+        
+    }
 }
 
 ; ========== 定时器管理 ==========
@@ -507,14 +536,18 @@ SendKey(key) {
     global shiftEnabled
 
     if (shiftEnabled) {
-        Send "{Shift down}"
-        Sleep 10
-        Send "{" key "}"
-        Sleep 10
-        Send "{Shift up}"
+        SendWithShift(key)
     } else {
         Send "{" key "}"
     }
+}
+
+SendWithShift(key) {
+    Send "{Shift down}"
+    Sleep 10
+    Send "{" key "}"
+    Sleep 10
+    Send "{Shift up}"
 }
 
 /**
@@ -530,8 +563,30 @@ PressLeftClick() {
     ; 获取当前模式
     mouseMode := mouseControls.left.mode.Value
 
-    ; 按住模式处理
-    if (mouseMode == SKILL_MODE_HOLD) {
+    if (mouseMode == SKILL_MODE_BUFF) {
+        ; BUFF模式 - 检测技能是否已激活
+        try {
+            if (skillPositions.Has("left")) {
+                pos := skillPositions["left"]
+                if (IsSkillActive(pos.x, pos.y)) {
+                    DebugLog("左键BUFF已激活，跳过")
+                    return
+                }
+            }
+        } catch as err {
+            DebugLog("检测左键技能状态出错: " err.Message)
+        }
+
+        ; 发送右键点击
+        if (shiftEnabled) {
+            SendWithShift("left")
+        } else {
+            Click "left"
+        }
+        DebugLog("点击鼠标左键(维持BUFF)")
+    }
+    else if (mouseMode == SKILL_MODE_HOLD) {
+        ; 按住模式处理
         static leftMouseHeld := false
 
         if (!leftMouseHeld) {
@@ -543,16 +598,12 @@ PressLeftClick() {
             DebugLog("按住鼠标左键")
         }
     }
-    ; 连点模式处理
     else {
+        ; 连点模式处理
         if (shiftEnabled) {
-            Send "{Shift down}"
-            Sleep 10
-            Click
-            Sleep 10
-            Send "{Shift up}"
+            SendWithShift("left")
         } else {
-            Click
+            Click "left"
         }
         DebugLog("点击鼠标左键")
     }
@@ -571,8 +622,30 @@ PressRightClick() {
     ; 获取当前模式
     mouseMode := mouseControls.right.mode.Value
 
-    ; 按住模式处理
-    if (mouseMode == SKILL_MODE_HOLD) {
+    if (mouseMode == SKILL_MODE_BUFF) {
+        ; BUFF模式 - 检测技能是否已激活
+        try {
+            if (skillPositions.Has("right")) {
+                pos := skillPositions["right"]
+                if (IsSkillActive(pos.x, pos.y)) {
+                    DebugLog("右键BUFF已激活，跳过")
+                    return
+                }
+            }
+        } catch as err {
+            DebugLog("检测右键技能状态出错: " err.Message)
+        }
+
+        ; 发送右键点击
+        if (shiftEnabled) {
+            SendWithShift("right")
+        } else {
+            Click "right"
+        }
+        DebugLog("点击鼠标右键(维持BUFF)")
+    }
+    else if (mouseMode == SKILL_MODE_HOLD) {
+        ; 按住模式处理
         static rightMouseHeld := false
 
         if (!rightMouseHeld) {
@@ -584,14 +657,10 @@ PressRightClick() {
             DebugLog("按住鼠标右键")
         }
     }
-    ; 连点模式处理
     else {
+        ; 连点模式处理
         if (shiftEnabled) {
-            Send "{Shift down}"
-            Sleep 10
-            Click "right"
-            Sleep 10
-            Send "{Shift up}"
+            SendWithShift("right")
         } else {
             Click "right"
         }
@@ -645,6 +714,7 @@ SaveSettings(*) {
         SaveSkillSettings(settingsFile)
         SaveMouseSettings(settingsFile)
         SaveUtilitySettings(settingsFile)
+        LoadGlobalHotkey()
 
         statusBar.Text := "设置已保存"
         DebugLog("所有设置已保存到: " settingsFile)
@@ -721,11 +791,13 @@ SaveUtilitySettings(file) {
     IniWrite(utilityControls.dianMao.key.Value, file, section, "DianMaoKey")
     IniWrite(utilityControls.dianQiu.key.Value, file, section, "DianQiuKey")
     IniWrite(utilityControls.binDun.key.Value, file, section, "BinDunKey")
+    IniWrite(hotkeyControl.Value, file, "Global", "StartStopKey")
 }
 
 /**
  * 加载设置函数
  */
+
 LoadSettings() {
     settingsFile := A_ScriptDir "\settings.ini"
 
@@ -739,6 +811,7 @@ LoadSettings() {
         LoadSkillSettings(settingsFile)
         LoadMouseSettings(settingsFile)
         LoadUtilitySettings(settingsFile)
+        LoadGlobalHotkey()
 
         DebugLog("所有设置已从文件加载: " settingsFile)
     } catch as err {
@@ -886,6 +959,8 @@ LoadUtilitySettings(file) {
         utilityControls.dianMao.key.Value := IniRead(file, "Utility", "DianMaoKey", "1")
         utilityControls.dianQiu.key.Value := IniRead(file, "Utility", "DianQiuKey", "e")
         utilityControls.binDun.key.Value := IniRead(file, "Utility", "BinDunKey", "3")
+        savedHotkey := IniRead(file, "Global", "StartStopKey", "F1")
+        hotkeyControl.Value := savedHotkey
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
     }
@@ -906,7 +981,6 @@ ToggleMacro(*) {
 
     if isRunning {
         ; 初始化窗口分辨率和技能位置
-        GetDiabloIVResolution()
         GetDynamicSkillPositions()
         ; 重置暂停状态
         isPaused := false
@@ -1023,8 +1097,9 @@ ToggleMouseAutoMove(*) {
 
 ; ========== 热键设置 ==========
 #HotIf WinActive("ahk_class Diablo IV Main Window Class")
-*F1::ToggleMacro()
-; 添加热键支持
+
+
+
 F3::{
     ; 确保从配置对象获取最新值
     dianQiuKey := utilityControls.dianQiu.key.Value
@@ -1037,7 +1112,7 @@ F3::{
         ; 执行连招
         Send "{Blind}{" binDunKey "}"  ; 使用Blind模式保持Shift状态
         Sleep 75
-        Loop 3 {
+        Loop 5 {
             Send "{Blind}{" dianQiuKey "}"
             Sleep 550
         }
@@ -1130,11 +1205,7 @@ PressDodge() {
 
     if (isRunning && !isPaused && utilityControls.dodge.enable.Value = 1) {
         if (shiftEnabled) {
-            Send "{Shift down}"
-            Sleep 10
-            Send "{Space}"
-            Sleep 10
-            Send "{Shift up}"
+            SendWithShift("Space")
         } else {
             Send "{Space}"
         }
@@ -1152,11 +1223,7 @@ PressPotion() {
         key := utilityControls.potion.key.Value
         if key != "" {
             if (shiftEnabled) {
-                Send "{Shift down}"
-                Sleep 10
-                Send "{" key "}"
-                Sleep 10
-                Send "{Shift up}"
+                SendWithShift(key)
             } else {
                 Send "{" key "}"
             }
@@ -1175,11 +1242,7 @@ PressForceMove() {
         key := utilityControls.forceMove.key.Value
         if key != "" {
             if (shiftEnabled) {
-                Send "{Shift down}"
-                Sleep 10
-                Send "{" key "}"
-                Sleep 10
-                Send "{Shift up}"
+                SendWithShift(key)
             } else {
                 Send "{" key "}"
             }
@@ -1195,20 +1258,19 @@ PressForceMove() {
  * @returns {Boolean} - 技能是否激活
  */
 IsSkillActive(x, y) {
-    try {
-        ; 获取指定坐标的像素颜色
-        color := PixelGetColor(x, y, "RGB")
-
-        ; 提取绿分量
-        r := (color >> 16) & 0xFF
-        g := (color >> 8) & 0xFF
-        b := color & 0xFF
-        ; 判断绿色分量高于蓝色分量
-        return (g > b + 100)
-    } catch as err {
-        DebugLog("检测技能状态失败: " err.Message)
-        return false
+    tryCount := 2
+    Loop tryCount {
+        try {
+            color := PixelGetColor(x, y, "RGB")
+            r := (color >> 16) & 0xFF
+            g := (color >> 8) & 0xFF
+            b := color & 0xFF
+            return (g > b + buffThreshold.Value)
+        } catch
+            Sleep 50
     }
+    DebugLog("检测技能状态失败: 多次尝试无效")
+    return false
 }
 
 /**
