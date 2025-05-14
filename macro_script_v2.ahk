@@ -177,7 +177,7 @@ CreateUtilityControls() {
     
     ; 添加鼠标点击暂停宏控件
     pauseOnClick := {
-        enable: myGui.AddCheckbox("x290 y435 w140 h20", "点击时暂停宏"),
+        enable: myGui.AddCheckbox("x290 y435 w140 h20", "鼠标点击时暂停宏"),
         interval: myGui.AddEdit("x430 y435 w40 h20", "3000")
     }
     pauseOnClick.enable.OnEvent("Click", TogglePauseOnClick)
@@ -1163,12 +1163,18 @@ MoveMouseToNextPoint() {
 LButton::
 RButton::{
     global isRunning, isPaused, pauseOnClickEnabled, temporaryPaused, pauseOnClick
-
-    ; 发送原始鼠标点击
-    if (A_ThisHotkey = "LButton")
-        Send "{LButton}"
-    else
-        Send "{RButton}"
+    
+    ; 获取当前按键
+    key := A_ThisHotkey = "LButton" ? "LButton" : "RButton"
+    
+    ; 发送原始鼠标按下事件（允许长按）
+    Send "{" key " down}"
+    
+    ; 等待直到释放按键
+    KeyWait key
+    
+    ; 发送释放事件
+    Send "{" key " up}"
 
     ; 检查是否需要暂停宏
     if (isRunning && !isPaused && pauseOnClickEnabled) {
