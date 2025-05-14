@@ -83,7 +83,6 @@ CreateMainGUI() {
     myGui.AddGroupBox("x10 y10 w460 h120", "状态")
     statusText := myGui.AddText("x30 y35 w200 h20", "状态: 未运行")
     myGui.AddButton("x30 y65 w120 h30", "开始/停止(F1)").OnEvent("Click", ToggleMacro)
-    myGui.AddText("x170 y70 w200 h20", "F3: 卡移速")
     myGui.AddText("x30 y100 w300 h20", "提示：仅在暗黑破坏神4窗口活动时生效")
 
     ; 添加技能设置区域
@@ -591,19 +590,6 @@ ResetMouseButtonStates() {
     }
 }
 
-/**
- * 卡移速功能
- * 按下r键、空格键，然后再按r键
- */
-SendKeys() {
-    Send "r"
-    Sleep 10
-    Send "{Space}"
-    Sleep 500
-    Send "r"
-    DebugLog("执行卡移速")
-}
-
 ; ========== 设置管理 ==========
 /**
  * 保存设置到INI文件
@@ -986,7 +972,6 @@ ToggleMouseAutoMove(*) {
 #HotIf WinActive("ahk_class Diablo IV Main Window Class")
 
 *F1::ToggleMacro()  ; * 表示忽略所有修饰键
-F3::SendKeys()
 
 Tab::{
     global isRunning, isPaused
