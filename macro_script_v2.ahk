@@ -25,6 +25,8 @@ global shiftEnabled := false
 global skillActiveState := false
 global mouseAutoMoveEnabled := false
 global mouseAutoMoveCurrentPoint := 1
+global pauseOnClickEnabled := false  ; 添加鼠标点击暂停功能状态变量
+global temporaryPaused := false      ; 添加临时暂停状态变量
 
 ; 技能模式常量
 global SKILL_MODE_CLICK := 1    ; 连点模式
@@ -142,7 +144,7 @@ CreateMouseControls() {
  * 创建功能键控件
  */
 CreateUtilityControls() {
-    global myGui, utilityControls, mouseAutoMove
+    global myGui, utilityControls, mouseAutoMove, pauseOnClick
 
     myGui.AddText("x30 y405 w60 h20", "翻滚:")
     myGui.AddText("x30 y435 w60 h20", "喝药:")
@@ -172,6 +174,13 @@ CreateUtilityControls() {
         interval: myGui.AddEdit("x430 y465 w40 h20", "1000")
     }
     mouseAutoMove.enable.OnEvent("Click", ToggleMouseAutoMove)
+    
+    ; 添加鼠标点击暂停宏控件
+    pauseOnClick := {
+        enable: myGui.AddCheckbox("x290 y435 w140 h20", "点击时暂停宏"),
+        interval: myGui.AddEdit("x430 y435 w40 h20", "3000")
+    }
+    pauseOnClick.enable.OnEvent("Click", TogglePauseOnClick)
 }
 
 /**
@@ -373,6 +382,7 @@ StopAllTimers() {
     SetTimer PressPotion, 0
     SetTimer PressForceMove, 0
     SetTimer MoveMouseToNextPoint, 0
+    SetTimer ResumeAfterClickPause, 0  ; 停止临时暂停的恢复定时器
 
     ; 重置所有按住模式的按键状态
     ResetAllHoldKeyStates()
@@ -637,7 +647,7 @@ SaveSkillSettings(file) {
  * @param {String} file - 设置文件路径
  */
 SaveMouseSettings(file) {
-    global mouseControls, mouseAutoMove
+    global mouseControls, mouseAutoMove, pauseOnClick
     section := "Mouse"
 
     ; 保存左键设置
@@ -657,6 +667,10 @@ SaveMouseSettings(file) {
     ; 保存自动移动设置
     IniWrite(mouseAutoMove.enable.Value, file, section, "MouseAutoMoveEnable")
     IniWrite(mouseAutoMove.interval.Value, file, section, "MouseAutoMoveInterval")
+    
+    ; 保存点击暂停设置
+    IniWrite(pauseOnClick.enable.Value, file, section, "PauseOnClickEnable")
+    IniWrite(pauseOnClick.interval.Value, file, section, "PauseOnClickInterval")
 }
 
 /**
@@ -750,7 +764,7 @@ LoadSkillSettings(file) {
  * @param {String} file - 设置文件路径
  */
 LoadMouseSettings(file) {
-    global mouseControls, mouseAutoMove, mouseAutoMoveEnabled, SKILL_MODE_CLICK
+    global mouseControls, mouseAutoMove, mouseAutoMoveEnabled, pauseOnClick, pauseOnClickEnabled, SKILL_MODE_CLICK
 
     try {
         ; 加载左键设置
@@ -767,6 +781,11 @@ LoadMouseSettings(file) {
         mouseAutoMove.enable.Value := IniRead(file, "Mouse", "MouseAutoMoveEnable", 0)
         mouseAutoMove.interval.Value := IniRead(file, "Mouse", "MouseAutoMoveInterval", 1000)
         mouseAutoMoveEnabled := (mouseAutoMove.enable.Value = 1)
+        
+        ; 加载点击暂停设置
+        pauseOnClick.enable.Value := IniRead(file, "Mouse", "PauseOnClickEnable", 0)
+        pauseOnClick.interval.Value := IniRead(file, "Mouse", "PauseOnClickInterval", 3000)
+        pauseOnClickEnabled := (pauseOnClick.enable.Value = 1)
 
         ; 设置左键模式下拉框
         try {
@@ -968,6 +987,20 @@ ToggleMouseAutoMove(*) {
     DebugLog("鼠标自动移动状态切换: " . (mouseAutoMoveEnabled ? "启用" : "禁用"))
 }
 
+/**
+ * 切换鼠标点击暂停宏功能
+ */
+TogglePauseOnClick(*) {
+    global pauseOnClickEnabled, pauseOnClick
+
+    pauseOnClickEnabled := !pauseOnClickEnabled
+    
+    ; 更新GUI勾选框状态以匹配当前状态
+    pauseOnClick.enable.Value := pauseOnClickEnabled ? 1 : 0
+
+    DebugLog("鼠标点击暂停宏状态切换: " . (pauseOnClickEnabled ? "启用" : "禁用"))
+}
+
 ; ========== 热键设置 ==========
 #HotIf WinActive("ahk_class Diablo IV Main Window Class")
 
@@ -1123,3 +1156,51 @@ MoveMouseToNextPoint() {
         DebugLog("鼠标自动移动失败: " err.Message)
     }
 }
+
+; 添加鼠标钩子监听
+#HotIf WinActive("ahk_class Diablo IV Main Window Class")
+
+LButton::
+RButton::{
+    global isRunning, isPaused, pauseOnClickEnabled, temporaryPaused, pauseOnClick
+
+    ; 发送原始鼠标点击
+    if (A_ThisHotkey = "LButton")
+        Send "{LButton}"
+    else
+        Send "{RButton}"
+
+    ; 检查是否需要暂停宏
+    if (isRunning && !isPaused && pauseOnClickEnabled) {
+        ; 暂停宏
+        StopAllTimers()
+        temporaryPaused := true
+        UpdateStatus("临时暂停", "检测到鼠标点击，宏临时暂停")
+        DebugLog("检测到鼠标点击，临时暂停宏")
+        
+        ; 设置恢复定时器
+        pauseInterval := Integer(pauseOnClick.interval.Value)
+        SetTimer(ResumeAfterClickPause, pauseInterval)
+    }
+}
+
+/**
+ * 鼠标点击后恢复宏运行
+ */
+ResumeAfterClickPause() {
+    global isRunning, isPaused, temporaryPaused
+    
+    ; 停止恢复定时器
+    SetTimer(ResumeAfterClickPause, 0)
+    
+    ; 如果宏仍在运行中且是临时暂停状态，则恢复宏
+    if (isRunning && temporaryPaused) {
+        ; 恢复宏运行
+        StartAllTimers()
+        temporaryPaused := false
+        UpdateStatus("运行中", "宏已从鼠标点击暂停中恢复")
+        DebugLog("宏已从鼠标点击暂停中恢复")
+    }
+}
+
+#HotIf
