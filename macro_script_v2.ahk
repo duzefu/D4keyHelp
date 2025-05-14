@@ -178,7 +178,7 @@ CreateUtilityControls() {
     ; 添加鼠标点击暂停宏控件
     pauseOnClick := {
         enable: myGui.AddCheckbox("x290 y435 w140 h20", "鼠标点击时暂停宏"),
-        interval: myGui.AddEdit("x430 y435 w40 h20", "3000")
+        interval: myGui.AddEdit("x430 y435 w40 h20", "2000")
     }
     pauseOnClick.enable.OnEvent("Click", TogglePauseOnClick)
 }
