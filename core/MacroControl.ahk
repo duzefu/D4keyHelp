@@ -4,6 +4,7 @@
  */
 ToggleMacro(*) {
     global isRunning, isPaused, previouslyPaused, mouseAutoMoveEnabled, mouseAutoMove
+    global compassEnabled, compassControl
 
     ; 确保完全停止所有定时器
     StopAllTimers()
@@ -19,8 +20,17 @@ ToggleMacro(*) {
         ; 确保鼠标自动移动状态与GUI勾选框一致
         mouseAutoMoveEnabled := (mouseAutoMove.enable.Value = 1)
 
+        ; 确保罗盘专用状态与GUI勾选框一致
+        compassEnabled := (compassControl.enable.Value = 1)
+
         ; 只有在暗黑4窗口激活时才启动定时器
         if WinActive("ahk_class Diablo IV Main Window Class") {
+            ; 如果罗盘功能已启用，立即执行一次
+            if (compassEnabled) {
+                DebugLog("宏启动时立即执行罗盘功能")
+                CompassClick()
+            }
+
             StartAllTimers()
             UpdateStatus("运行中", "宏已启动")
         } else {
@@ -86,7 +96,7 @@ TogglePauseOnClick(*) {
     global pauseOnClickEnabled, pauseOnClick
 
     pauseOnClickEnabled := !pauseOnClickEnabled
-    
+
     ; 更新GUI勾选框状态以匹配当前状态
     pauseOnClick.enable.Value := pauseOnClickEnabled ? 1 : 0
 
@@ -98,10 +108,10 @@ TogglePauseOnClick(*) {
  */
 ResumeAfterClickPause() {
     global isRunning, isPaused, temporaryPaused
-    
+
     ; 停止恢复定时器
     SetTimer(ResumeAfterClickPause, 0)
-    
+
     ; 如果宏仍在运行中且是临时暂停状态，则恢复宏
     if (isRunning && temporaryPaused) {
         ; 恢复宏运行
@@ -110,4 +120,34 @@ ResumeAfterClickPause() {
         UpdateStatus("运行中", "宏已从鼠标点击暂停中恢复")
         DebugLog("宏已从鼠标点击暂停中恢复")
     }
+}
+
+/**
+ * 切换罗盘专用功能
+ */
+ToggleCompass(*) {
+    global compassEnabled, compassControl, isRunning, isPaused, timerStates
+
+    compassEnabled := !compassEnabled
+
+    ; 更新GUI勾选框状态以匹配当前状态
+    compassControl.enable.Value := compassEnabled ? 1 : 0
+
+    ; 如果宏已经在运行，则更新定时器状态
+    if (isRunning && !isPaused) {
+        if (compassEnabled) {
+            interval := Integer(compassControl.interval.Value)
+            if (interval > 0) {
+                SetTimer(CompassClick, interval)
+                timerStates["compass"] := true
+                DebugLog("启动罗盘专用定时器 - 间隔: " interval)
+            }
+        } else {
+            SetTimer(CompassClick, 0)
+            timerStates["compass"] := false
+            DebugLog("停止罗盘专用定时器")
+        }
+    }
+
+    DebugLog("罗盘专用状态切换: " . (compassEnabled ? "启用" : "禁用"))
 }

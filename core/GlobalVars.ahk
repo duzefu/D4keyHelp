@@ -23,6 +23,8 @@ global mouseAutoMoveEnabled := false
 global mouseAutoMoveCurrentPoint := 1
 global pauseOnClickEnabled := false  ; 添加鼠标点击暂停功能状态变量
 global temporaryPaused := false      ; 添加临时暂停状态变量
+global compassEnabled := false       ; 罗盘专用功能状态变量
+global compassPaused := false        ; 罗盘操作时的暂停状态
 
 ; 技能模式常量
 global SKILL_MODE_CLICK := 1    ; 连点模式
@@ -48,3 +50,4 @@ global timerStates := Map()       ; 用于跟踪定时器状态
 global forceMove := {}            ; 强制移动控件
 global mouseAutoMove := {}        ; 鼠标自动移动控件
 global pauseOnClick := {}         ; 鼠标点击暂停控件
+global compassControl := {}       ; 罗盘专用控件

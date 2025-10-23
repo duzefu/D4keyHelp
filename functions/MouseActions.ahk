@@ -137,3 +137,55 @@ MoveMouseToNextPoint() {
         DebugLog("鼠标自动移动失败: " err.Message)
     }
 }
+
+/**
+ * 罗盘专用功能 - 每隔65秒点击屏幕指定位置
+ */
+CompassClick() {
+    global isRunning, isPaused, compassEnabled, compassPaused
+
+    if (!isRunning || !compassEnabled)
+        return
+
+    try {
+        DebugLog("罗盘功能开始执行")
+
+        ; 1. 暂停所有宏
+        compassPaused := true
+        StopAllTimers()
+        DebugLog("罗盘功能：已暂停所有宏")
+
+        ; 2. 计算屏幕点击位置 (x=0.5, y=0.48)
+        screenWidth := A_ScreenWidth
+        screenHeight := A_ScreenHeight
+        clickX := screenWidth * 0.5
+        clickY := screenHeight * 0.49
+
+        ; 3. 点击屏幕中心偏上位置2次，间隔50ms
+        Click clickX, clickY
+        DebugLog("罗盘功能：第一次点击 x=" clickX ", y=" clickY)
+        Sleep 50
+        Click clickX, clickY
+        DebugLog("罗盘功能：第二次点击 x=" clickX ", y=" clickY)
+
+        ; 4. 等待2秒后恢复宏
+        DebugLog("罗盘功能：等待2秒...")
+        Sleep 2000
+
+        ; 5. 恢复所有宏运行
+        if (isRunning && compassPaused) {
+            StartAllTimers()
+            compassPaused := false
+            DebugLog("罗盘功能：已恢复所有宏")
+        }
+
+        DebugLog("罗盘功能执行完成")
+    } catch as err {
+        DebugLog("罗盘功能执行失败: " err.Message)
+        ; 确保即使出错也恢复宏运行
+        if (isRunning && compassPaused) {
+            StartAllTimers()
+            compassPaused := false
+        }
+    }
+}

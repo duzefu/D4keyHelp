@@ -15,6 +15,9 @@ StartAllTimers() {
     ; 启动鼠标自动移动定时器
     StartMouseAutoMoveTimer()
 
+    ; 启动罗盘专用定时器
+    StartCompassTimer()
+
     DebugLog("所有定时器已启动")
 }
 
@@ -67,6 +70,24 @@ StartMouseAutoMoveTimer() {
 }
 
 /**
+ * 启动罗盘专用定时器
+ */
+StartCompassTimer() {
+    global compassEnabled, compassControl, timerStates
+
+    DebugLog("罗盘专用状态: " . (compassEnabled ? "启用" : "禁用") . ", GUI勾选状态: " . compassControl.enable.Value)
+
+    if (compassEnabled) {
+        interval := Integer(compassControl.interval.Value)
+        if (interval > 0) {
+            SetTimer(CompassClick, interval)
+            timerStates["compass"] := true
+            DebugLog("启动罗盘专用定时器 - 间隔: " interval)
+        }
+    }
+}
+
+/**
  * 启动单个定时器
  * @param {String} name - 定时器名称
  * @param {Object} control - 控件对象
@@ -114,6 +135,7 @@ StopAllTimers() {
     SetTimer PressForceMove, 0
     SetTimer MoveMouseToNextPoint, 0
     SetTimer ResumeAfterClickPause, 0  ; 停止临时暂停的恢复定时器
+    SetTimer CompassClick, 0           ; 停止罗盘专用定时器
 
     ; 重置所有按住模式的按键状态
     ResetAllHoldKeyStates()

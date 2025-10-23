@@ -11,6 +11,7 @@ SaveSettings(*) {
         SaveSkillSettings(settingsFile)
         SaveMouseSettings(settingsFile)
         SaveUtilitySettings(settingsFile)
+        SaveCompassSettings(settingsFile)
 
         statusBar.Text := "设置已保存"
         DebugLog("所有设置已保存到: " settingsFile)
@@ -90,6 +91,18 @@ SaveUtilitySettings(file) {
 }
 
 /**
+ * 保存罗盘专用设置
+ * @param {String} file - 设置文件路径
+ */
+SaveCompassSettings(file) {
+    global compassControl
+    section := "Compass"
+
+    IniWrite(compassControl.enable.Value, file, section, "CompassEnable")
+    IniWrite(compassControl.interval.Value, file, section, "CompassInterval")
+}
+
+/**
  * 加载设置函数
  */
 LoadSettings() {
@@ -105,6 +118,7 @@ LoadSettings() {
         LoadSkillSettings(settingsFile)
         LoadMouseSettings(settingsFile)
         LoadUtilitySettings(settingsFile)
+        LoadCompassSettings(settingsFile)
 
         DebugLog("所有设置已从文件加载: " settingsFile)
     } catch as err {
@@ -246,5 +260,23 @@ LoadUtilitySettings(file) {
         utilityControls.forceMove.interval.Value := IniRead(file, "Utility", "ForceMoveInterval", 50)
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
+    }
+}
+
+/**
+ * 加载罗盘专用设置
+ * @param {String} file - 设置文件路径
+ */
+LoadCompassSettings(file) {
+    global compassControl, compassEnabled
+
+    try {
+        compassControl.enable.Value := IniRead(file, "Compass", "CompassEnable", 0)
+        compassControl.interval.Value := IniRead(file, "Compass", "CompassInterval", 65000)
+        compassEnabled := (compassControl.enable.Value = 1)
+
+        DebugLog("加载罗盘专用设置 - 状态: " . (compassEnabled ? "启用" : "禁用") . ", 间隔: " . compassControl.interval.Value)
+    } catch as err {
+        DebugLog("加载罗盘专用设置出错: " err.Message)
     }
 }

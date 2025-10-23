@@ -25,7 +25,7 @@ CreateMouseControls() {
  * 创建功能键控件
  */
 CreateUtilityControls() {
-    global myGui, utilityControls, mouseAutoMove, pauseOnClick
+    global myGui, utilityControls, mouseAutoMove, pauseOnClick, compassControl
 
     myGui.AddText("x30 y405 w60 h20", "翻滚:")
     myGui.AddText("x30 y435 w60 h20", "喝药:")
@@ -55,11 +55,18 @@ CreateUtilityControls() {
         interval: myGui.AddEdit("x430 y465 w40 h20", "1000")
     }
     mouseAutoMove.enable.OnEvent("Click", ToggleMouseAutoMove)
-    
+
     ; 添加鼠标点击暂停宏控件
     pauseOnClick := {
         enable: myGui.AddCheckbox("x290 y435 w140 h20", "鼠标点击时暂停宏"),
         interval: myGui.AddEdit("x430 y435 w40 h20", "2000")
     }
     pauseOnClick.enable.OnEvent("Click", TogglePauseOnClick)
+
+    ; 添加罗盘专用控件
+    compassControl := {
+        enable: myGui.AddCheckbox("x290 y405 w100 h20", "罗盘专用"),
+        interval: myGui.AddEdit("x400 y405 w70 h20", "65000")
+    }
+    compassControl.enable.OnEvent("Click", ToggleCompass)
 }
