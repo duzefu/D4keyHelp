@@ -155,15 +155,26 @@ CompassClick() {
         StopAllTimers()
         DebugLog("罗盘功能：已暂停所有宏")
 
-        ; 2. 计算屏幕点击位置 (x=0.5, y=0.48)
+        ; 2. 计算屏幕点击位置 (x=0.5, y=0.47)
         screenWidth := A_ScreenWidth
         screenHeight := A_ScreenHeight
         clickX := screenWidth * 0.5
-        clickY := screenHeight * 0.49
+        clickY := screenHeight * 0.47
 
-        ; 3. 点击屏幕中心偏上位置2次，间隔50ms
+        ; 3. 先移动鼠标到目标位置
+        MouseMove clickX, clickY, 0
+        DebugLog("罗盘功能：鼠标移动到 x=" clickX ", y=" clickY)
+
+        ; 4. 等待200ms让游戏识别鼠标位置
+        Sleep 500
+
+        ; 5. 点击屏幕中心偏上位置2次，间隔50ms
         Click clickX, clickY
         DebugLog("罗盘功能：第一次点击 x=" clickX ", y=" clickY)
+        Sleep 50
+        Click clickX, clickY
+        Sleep 50
+        Click clickX, clickY
         Sleep 50
         Click clickX, clickY
         DebugLog("罗盘功能：第二次点击 x=" clickX ", y=" clickY)
