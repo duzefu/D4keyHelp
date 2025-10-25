@@ -2,6 +2,9 @@
 #SingleInstance Force
 ProcessSetPriority "High"
 
+; 允许热键中断正在运行的线程
+#MaxThreadsPerHotkey 2
+
 ; ========== 包含所有模块 ==========
 ; 全局变量定义
 #Include "core/GlobalVars.ahk"

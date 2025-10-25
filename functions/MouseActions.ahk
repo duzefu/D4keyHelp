@@ -1,5 +1,36 @@
 ; ========== 鼠标动作 ==========
 /**
+ * 可中断的Sleep函数
+ * 在Sleep期间检查宏是否被停止，如果停止则立即返回
+ * @param {Integer} duration - 等待的毫秒数
+ * @return {Boolean} - 如果正常完成返回true，如果被中断返回false
+ */
+InterruptibleSleep(duration) {
+    global isRunning, compassPaused
+
+    ; 将睡眠时间分成100ms的小块，以便能够快速响应中断
+    checkInterval := 100
+    elapsed := 0
+
+    while (elapsed < duration) {
+        ; 检查宏是否已停止
+        if (!isRunning) {
+            DebugLog("罗盘功能：检测到宏已停止，中断执行")
+            ; 清理罗盘暂停状态
+            compassPaused := false
+            return false
+        }
+
+        ; 计算本次sleep的时间
+        sleepTime := Min(checkInterval, duration - elapsed)
+        Sleep sleepTime
+        elapsed += sleepTime
+    }
+
+    return true
+}
+
+/**
  * 鼠标左键点击
  */
 PressLeftClick() {
@@ -147,6 +178,9 @@ CompassClick() {
     if (!isRunning || !compassEnabled)
         return
 
+    ; 允许此函数被热键中断
+    Critical "Off"
+
     try {
         DebugLog("罗盘功能开始执行")
 
@@ -165,25 +199,30 @@ CompassClick() {
         MouseMove clickX, clickY, 0
         DebugLog("罗盘功能：鼠标移动到 x=" clickX ", y=" clickY)
 
-        ; 4. 等待200ms让游戏识别鼠标位置
-        Sleep 500
+        ; 4. 可中断的等待500ms让游戏识别鼠标位置
+        if (!InterruptibleSleep(500))
+            return
 
-        ; 5. 点击屏幕中心偏上位置2次，间隔50ms
+        ; 5. 点击屏幕中心偏上位置4次，间隔50ms
         Click clickX, clickY
         DebugLog("罗盘功能：第一次点击 x=" clickX ", y=" clickY)
-        Sleep 50
+        if (!InterruptibleSleep(50))
+            return
         Click clickX, clickY
-        Sleep 50
+        if (!InterruptibleSleep(50))
+            return
         Click clickX, clickY
-        Sleep 50
+        if (!InterruptibleSleep(50))
+            return
         Click clickX, clickY
-        DebugLog("罗盘功能：第二次点击 x=" clickX ", y=" clickY)
+        DebugLog("罗盘功能：第四次点击 x=" clickX ", y=" clickY)
 
-        ; 4. 等待2秒后恢复宏
+        ; 6. 可中断的等待2秒后恢复宏
         DebugLog("罗盘功能：等待2秒...")
-        Sleep 2000
+        if (!InterruptibleSleep(2000))
+            return
 
-        ; 5. 恢复所有宏运行
+        ; 7. 恢复所有宏运行
         if (isRunning && compassPaused) {
             StartAllTimers()
             compassPaused := false
@@ -193,10 +232,17 @@ CompassClick() {
         DebugLog("罗盘功能执行完成")
     } catch as err {
         DebugLog("罗盘功能执行失败: " err.Message)
-        ; 确保即使出错也恢复宏运行
+    } finally {
+        ; 确保清理compassPaused状态
+        ; 如果宏仍在运行且处于罗盘暂停状态，则恢复
         if (isRunning && compassPaused) {
             StartAllTimers()
             compassPaused := false
+            DebugLog("罗盘功能：finally块恢复宏运行")
+        } else if (compassPaused) {
+            ; 如果宏已停止但compassPaused还是true，清理状态
+            compassPaused := false
+            DebugLog("罗盘功能：finally块清理compassPaused状态")
         }
     }
 }
