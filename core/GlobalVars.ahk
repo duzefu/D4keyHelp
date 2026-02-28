@@ -51,3 +51,9 @@ global forceMove := {}            ; 强制移动控件
 global mouseAutoMove := {}        ; 鼠标自动移动控件
 global pauseOnClick := {}         ; 鼠标点击暂停控件
 global compassControl := {}       ; 罗盘专用控件
+
+; 预设配置变量
+global currentPreset := 1                                    ; 当前选中的预设索引 (1-4)
+global presetNames := ["配置1", "配置2", "配置3", "配置4"]    ; 预设名称数组
+global presetTab := ""                                         ; 预设Tab控件
+global suppressTabChange := false                              ; 抑制Tab切换事件标志

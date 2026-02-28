@@ -7,13 +7,13 @@ CreateSkillControls() {
 
     skillControls := Map()
     Loop 4 {
-        yPos := 225 + (A_Index-1) * 30
-        myGui.AddText("x30 y" yPos " w60 h20", "技能" A_Index ":")
+        yPos := 236 + (A_Index-1) * 30
+        myGui.AddText("x35 y" yPos " w60 h20", "技能" A_Index ":")
         skillControls[A_Index] := {
-            key: myGui.AddHotkey("x90 y" yPos " w35 h20", A_Index),
-            enable: myGui.AddCheckbox("x130 y" yPos " w60 h20", "启用"),
-            interval: myGui.AddEdit("x200 y" yPos " w60 h20", "300"),
-            mode: myGui.AddDropDownList("x270 y" yPos " w100 h120 Choose1", skillModeNames)
+            key: myGui.AddHotkey("x95 y" yPos " w35 h20", A_Index),
+            enable: myGui.AddCheckbox("x135 y" yPos " w60 h20", "启用"),
+            interval: myGui.AddEdit("x205 y" yPos " w60 h20", "300"),
+            mode: myGui.AddDropDownList("x275 y" yPos " w100 h120 Choose1", skillModeNames)
         }
     }
 }
