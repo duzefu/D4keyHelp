@@ -55,11 +55,14 @@ InitializeGUI() {
     ; 添加状态栏
     statusBar := myGui.AddStatusBar(, "就绪")
 
-    ; 显示GUI
+    ; 先加载设置（在Show之前，避免Tab2内的DropDownList渲染不刷新）
+    LoadSettings()
+
+    ; 显示GUI（此时下拉框值已正确设置，首次渲染即为正确状态）
     myGui.Show("w640 h580")
 
-    ; 加载设置
-    LoadSettings()
+    ; 强制重绘窗口，确保所有控件（尤其是Tab2内的DropDownList）正确显示
+    WinRedraw(myGui.Hwnd)
 
     ; 设置窗口事件处理 - 退出时自动保存
     myGui.OnEvent("Close", OnGuiClose)
