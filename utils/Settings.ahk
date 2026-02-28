@@ -297,13 +297,11 @@ SaveSkillSettings(file, prefix := "") {
 
     for i in [1, 2, 3, 4] {
         IniWrite(skillControls[i].key.Value, file, section, "Skill" i "Key")
-        IniWrite(skillControls[i].enable.Value, file, section, "Skill" i "Enable")
+        IniWrite(skillControls[i].strategy.Value, file, section, "Skill" i "Strategy")
         IniWrite(skillControls[i].interval.Value, file, section, "Skill" i "Interval")
-
-        ; 获取下拉框选择的索引并保存
-        modeIndex := skillControls[i].mode.Value
-        IniWrite(modeIndex, file, section, "Skill" i "Mode")
-        DebugLog("保存技能" i "模式: " modeIndex)
+        IniWrite(skillControls[i].delay.Value, file, section, "Skill" i "Delay")
+        IniWrite(skillControls[i].random.Value, file, section, "Skill" i "Random")
+        DebugLog("保存技能" i "策略: " skillControls[i].strategy.Value)
     }
 }
 
@@ -316,19 +314,19 @@ SaveMouseSettings(file, prefix := "") {
     global mouseControls, mouseAutoMove, pauseOnClick
     section := prefix . "Mouse"
 
-    ; 保存左键设置
-    IniWrite(mouseControls.left.enable.Value, file, section, "LeftClickEnable")
+    ; 保存左键设置（策略式）
+    IniWrite(mouseControls.left.strategy.Value, file, section, "LeftClickStrategy")
     IniWrite(mouseControls.left.interval.Value, file, section, "LeftClickInterval")
-    leftModeIndex := mouseControls.left.mode.Value
-    IniWrite(leftModeIndex, file, section, "LeftClickMode")
-    DebugLog("保存左键模式: " leftModeIndex)
+    IniWrite(mouseControls.left.delay.Value, file, section, "LeftClickDelay")
+    IniWrite(mouseControls.left.random.Value, file, section, "LeftClickRandom")
+    DebugLog("保存左键策略: " mouseControls.left.strategy.Value)
 
-    ; 保存右键设置
-    IniWrite(mouseControls.right.enable.Value, file, section, "RightClickEnable")
+    ; 保存右键设置（策略式）
+    IniWrite(mouseControls.right.strategy.Value, file, section, "RightClickStrategy")
     IniWrite(mouseControls.right.interval.Value, file, section, "RightClickInterval")
-    rightModeIndex := mouseControls.right.mode.Value
-    IniWrite(rightModeIndex, file, section, "RightClickMode")
-    DebugLog("保存右键模式: " rightModeIndex)
+    IniWrite(mouseControls.right.delay.Value, file, section, "RightClickDelay")
+    IniWrite(mouseControls.right.random.Value, file, section, "RightClickRandom")
+    DebugLog("保存右键策略: " mouseControls.right.strategy.Value)
 
     ; 保存自动移动设置
     IniWrite(mouseAutoMove.enable.Value, file, section, "MouseAutoMoveEnable")
@@ -418,35 +416,40 @@ LoadSkillSettings(file, prefix := "") {
     Loop 4 {
         try {
             key := IniRead(file, section, "Skill" A_Index "Key", A_Index)
-            enabled := IniRead(file, section, "Skill" A_Index "Enable", 1)
+
+            ; 尝试读取新格式（Strategy）
+            strategy := IniRead(file, section, "Skill" A_Index "Strategy", "")
+            if (strategy = "" || strategy = "ERROR") {
+                ; 旧格式兼容：从Enable+Mode转换为Strategy
+                enabled := Integer(IniRead(file, section, "Skill" A_Index "Enable", 0))
+                mode := Integer(IniRead(file, section, "Skill" A_Index "Mode", SKILL_MODE_CLICK))
+                if (!enabled)
+                    strategy := 1  ; 禁用
+                else
+                    strategy := mode + 1  ; mode 1->strategy 2, mode 2->strategy 3, mode 3->strategy 4
+                DebugLog("技能" A_Index "从旧格式转换: Enable=" enabled ", Mode=" mode " -> Strategy=" strategy)
+            } else {
+                strategy := Integer(strategy)
+            }
+
             interval := IniRead(file, section, "Skill" A_Index "Interval", 300)
-            mode := Integer(IniRead(file, section, "Skill" A_Index "Mode", SKILL_MODE_CLICK))
+            delay := IniRead(file, section, "Skill" A_Index "Delay", 10)
+            random := IniRead(file, section, "Skill" A_Index "Random", 1)
 
             skillControls[A_Index].key.Value := key
-            skillControls[A_Index].enable.Value := enabled
-            skillControls[A_Index].interval.Value := interval
 
-            ; 设置模式下拉框
-            try {
-                DebugLog("尝试设置技能" A_Index "模式为: " mode)
-                if (mode >= 1 && mode <= 3) {
-                    ; 直接设置Text属性而不是使用Choose方法
-                    if (mode == 1)
-                        skillControls[A_Index].mode.Text := "连点"
-                    else if (mode == 2)
-                        skillControls[A_Index].mode.Text := "维持BUFF"
-                    else if (mode == 3)
-                        skillControls[A_Index].mode.Text := "按住"
-
-                    DebugLog("成功设置技能" A_Index "模式为: " mode)
-                } else {
-                    skillControls[A_Index].mode.Text := "连点"
-                    DebugLog("技能" A_Index "模式值无效: " mode "，使用默认连点模式")
-                }
-            } catch as err {
-                skillControls[A_Index].mode.Text := "连点"
-                DebugLog("设置技能" A_Index "模式出错: " err.Message "，使用默认连点模式")
+            ; 设置策略下拉框
+            if (strategy >= 1 && strategy <= 4) {
+                skillControls[A_Index].strategy.Choose(strategy)
+            } else {
+                skillControls[A_Index].strategy.Choose(1)  ; 默认禁用
             }
+
+            skillControls[A_Index].interval.Value := interval
+            skillControls[A_Index].delay.Value := delay
+            skillControls[A_Index].random.Value := random
+
+            DebugLog("加载技能" A_Index " - 策略: " strategy ", 间隔: " interval ", 延迟: " delay ", 随机: " random)
         } catch as err {
             DebugLog("加载技能" A_Index "设置出错: " err.Message)
         }
@@ -463,15 +466,48 @@ LoadMouseSettings(file, prefix := "") {
     section := prefix . "Mouse"
 
     try {
-        ; 加载左键设置
-        mouseControls.left.enable.Value := IniRead(file, section, "LeftClickEnable", 1)
+        ; 加载左键设置（兼容旧格式）
+        leftStrategy := IniRead(file, section, "LeftClickStrategy", "")
+        if (leftStrategy = "" || leftStrategy = "ERROR") {
+            ; 旧格式兼容
+            leftEnabled := Integer(IniRead(file, section, "LeftClickEnable", 0))
+            leftMode := Integer(IniRead(file, section, "LeftClickMode", SKILL_MODE_CLICK))
+            if (!leftEnabled)
+                leftStrategy := 1
+            else
+                leftStrategy := leftMode + 1
+            DebugLog("左键从旧格式转换: Enable=" leftEnabled ", Mode=" leftMode " -> Strategy=" leftStrategy)
+        } else {
+            leftStrategy := Integer(leftStrategy)
+        }
         mouseControls.left.interval.Value := IniRead(file, section, "LeftClickInterval", 80)
-        leftMode := Integer(IniRead(file, section, "LeftClickMode", SKILL_MODE_CLICK))
+        mouseControls.left.delay.Value := IniRead(file, section, "LeftClickDelay", 10)
+        mouseControls.left.random.Value := IniRead(file, section, "LeftClickRandom", 1)
+        if (leftStrategy >= 1 && leftStrategy <= 4)
+            mouseControls.left.strategy.Choose(leftStrategy)
+        else
+            mouseControls.left.strategy.Choose(1)
 
-        ; 加载右键设置
-        mouseControls.right.enable.Value := IniRead(file, section, "RightClickEnable", 0)
+        ; 加载右键设置（兼容旧格式）
+        rightStrategy := IniRead(file, section, "RightClickStrategy", "")
+        if (rightStrategy = "" || rightStrategy = "ERROR") {
+            rightEnabled := Integer(IniRead(file, section, "RightClickEnable", 0))
+            rightMode := Integer(IniRead(file, section, "RightClickMode", SKILL_MODE_CLICK))
+            if (!rightEnabled)
+                rightStrategy := 1
+            else
+                rightStrategy := rightMode + 1
+            DebugLog("右键从旧格式转换: Enable=" rightEnabled ", Mode=" rightMode " -> Strategy=" rightStrategy)
+        } else {
+            rightStrategy := Integer(rightStrategy)
+        }
         mouseControls.right.interval.Value := IniRead(file, section, "RightClickInterval", 300)
-        rightMode := Integer(IniRead(file, section, "RightClickMode", SKILL_MODE_CLICK))
+        mouseControls.right.delay.Value := IniRead(file, section, "RightClickDelay", 10)
+        mouseControls.right.random.Value := IniRead(file, section, "RightClickRandom", 1)
+        if (rightStrategy >= 1 && rightStrategy <= 4)
+            mouseControls.right.strategy.Choose(rightStrategy)
+        else
+            mouseControls.right.strategy.Choose(1)
 
         ; 加载自动移动设置
         mouseAutoMove.enable.Value := IniRead(file, section, "MouseAutoMoveEnable", 0)
@@ -483,44 +519,9 @@ LoadMouseSettings(file, prefix := "") {
         pauseOnClick.interval.Value := IniRead(file, section, "PauseOnClickInterval", 3000)
         pauseOnClickEnabled := (pauseOnClick.enable.Value = 1)
 
-        ; 设置左键模式下拉框
-        SetMouseModeDropdown(mouseControls.left.mode, leftMode, "左键")
-
-        ; 设置右键模式下拉框
-        SetMouseModeDropdown(mouseControls.right.mode, rightMode, "右键")
-
-        DebugLog("加载鼠标设置 - 自动移动状态: " . (mouseAutoMoveEnabled ? "启用" : "禁用"))
+        DebugLog("加载鼠标设置 - 左键策略: " leftStrategy ", 右键策略: " rightStrategy)
     } catch as err {
         DebugLog("加载鼠标设置出错: " err.Message)
-    }
-}
-
-/**
- * 设置鼠标模式下拉框
- * @param {Object} dropdown - 下拉框控件
- * @param {Integer} mode - 模式值
- * @param {String} name - 按键名称
- */
-SetMouseModeDropdown(dropdown, mode, name) {
-    try {
-        DebugLog("尝试设置" name "模式为: " mode)
-        if (mode >= 1 && mode <= 3) {
-            ; 直接设置Text属性而不是使用Choose方法
-            if (mode == 1)
-                dropdown.Text := "连点"
-            else if (mode == 2)
-                dropdown.Text := "维持BUFF"
-            else if (mode == 3)
-                dropdown.Text := "按住"
-
-            DebugLog("成功设置" name "模式为: " mode)
-        } else {
-            dropdown.Text := "连点"
-            DebugLog(name "模式值无效: " mode "，使用默认连点模式")
-        }
-    } catch as err {
-        dropdown.Text := "连点"
-        DebugLog("设置" name "模式出错: " err.Message "，使用默认连点模式")
     }
 }
 

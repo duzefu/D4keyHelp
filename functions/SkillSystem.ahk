@@ -7,8 +7,8 @@ PressSkill(skillNum) {
     global isRunning, isPaused, skillControls, skillPositions
     global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
 
-    ; 检查基本条件
-    if (!isRunning || isPaused || !skillControls[skillNum].enable.Value)
+    ; 检查基本条件：策略不为禁用(1)
+    if (!isRunning || isPaused || skillControls[skillNum].strategy.Value <= 1)
         return
 
     ; 获取按键
@@ -16,8 +16,8 @@ PressSkill(skillNum) {
     if (key = "")
         return
 
-    ; 获取当前技能模式
-    skillMode := skillControls[skillNum].mode.Value
+    ; 从策略值转换为模式值（策略-1=模式）
+    skillMode := skillControls[skillNum].strategy.Value - 1
 
     ; 根据不同模式处理
     if (skillMode == SKILL_MODE_BUFF) {
@@ -69,10 +69,10 @@ CheckHoldKey(skillNum, key) {
     global isRunning, isPaused, skillControls, SKILL_MODE_HOLD
     static keyStates := Map()
 
-    ; 如果宏停止、暂停或模式改变，释放按键
+    ; 如果宏停止、暂停或策略改变，释放按键
     if (!isRunning || isPaused ||
-        !skillControls[skillNum].enable.Value ||
-        skillControls[skillNum].mode.Value != SKILL_MODE_HOLD) {
+        skillControls[skillNum].strategy.Value <= 1 ||
+        (skillControls[skillNum].strategy.Value - 1) != SKILL_MODE_HOLD) {
 
         if (keyStates.Has(skillNum) && keyStates[skillNum]) {
             Send "{" key " up}"

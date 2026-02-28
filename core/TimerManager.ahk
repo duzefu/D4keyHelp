@@ -28,8 +28,20 @@ StartSkillTimers() {
     global skillControls, boundSkillTimers, timerStates
 
     for i in [1, 2, 3, 4] {
-        if (skillControls[i].enable.Value = 1) {
+        ; 策略值 > 1 表示已启用（2=连点, 3=维持BUFF, 4=按住）
+        if (skillControls[i].strategy.Value > 1) {
             interval := Integer(skillControls[i].interval.Value)
+            ; 应用延迟
+            delay := Integer(skillControls[i].delay.Value)
+            isRandom := skillControls[i].random.Value
+            if (delay != 0) {
+                if (isRandom)
+                    interval += Random(0, Abs(delay))
+                else
+                    interval += delay
+            }
+            if (interval < 20)
+                interval := 20
             if (interval > 0) {
                 boundSkillTimers[i] := PressSkill.Bind(i)
                 SetTimer(boundSkillTimers[i], interval)
@@ -44,8 +56,10 @@ StartSkillTimers() {
  * 启动鼠标和功能键定时器
  */
 StartUtilityTimers() {
-    StartSingleTimer("leftClick", mouseControls.left, PressLeftClick)
-    StartSingleTimer("rightClick", mouseControls.right, PressRightClick)
+    ; 鼠标控件使用策略模式
+    StartStrategyTimer("leftClick", mouseControls.left, PressLeftClick)
+    StartStrategyTimer("rightClick", mouseControls.right, PressRightClick)
+    ; 功能键控件使用启用模式
     StartSingleTimer("dodge", utilityControls.dodge, PressDodge)
     StartSingleTimer("potion", utilityControls.potion, PressPotion)
     StartSingleTimer("forceMove", utilityControls.forceMove, PressForceMove)
@@ -98,6 +112,37 @@ StartSingleTimer(name, control, timerFunc) {
 
     if (control.enable.Value = 1) {
         interval := Integer(control.interval.Value)
+        if (interval > 0) {
+            SetTimer(timerFunc, interval)
+            timerStates[name] := true
+            DebugLog("启动" name "定时器 - 间隔: " interval)
+        }
+    }
+}
+
+/**
+ * 启动策略型定时器（用于鼠标控件，使用strategy代替enable）
+ * @param {String} name - 定时器名称
+ * @param {Object} control - 控件对象（含strategy、interval、delay、random属性）
+ * @param {Function} timerFunc - 定时器函数
+ */
+StartStrategyTimer(name, control, timerFunc) {
+    global timerStates
+
+    ; 策略值 > 1 表示已启用
+    if (control.strategy.Value > 1) {
+        interval := Integer(control.interval.Value)
+        ; 应用延迟
+        delay := Integer(control.delay.Value)
+        isRandom := control.random.Value
+        if (delay != 0) {
+            if (isRandom)
+                interval += Random(0, Abs(delay))
+            else
+                interval += delay
+        }
+        if (interval < 20)
+            interval := 20
         if (interval > 0) {
             SetTimer(timerFunc, interval)
             timerStates[name] := true

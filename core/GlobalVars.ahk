@@ -32,6 +32,9 @@ global SKILL_MODE_BUFF := 2     ; 维持BUFF模式
 global SKILL_MODE_HOLD := 3     ; 按住模式
 global skillModeNames := ["连点", "维持BUFF", "按住"]
 
+; 策略下拉框选项（仿D3风格：禁用=1, 连点=2, 维持BUFF=3, 按住=4）
+global strategyNames := ["禁用", "连点", "维持BUFF", "按住"]
+
 ; 技能位置映射
 global skillPositions := Map(
     1, {x: 1035, y: 1290},

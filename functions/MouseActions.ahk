@@ -37,11 +37,11 @@ PressLeftClick() {
     global isRunning, isPaused, mouseControls, shiftEnabled
     global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
 
-    if (!isRunning || isPaused || !mouseControls.left.enable.Value)
+    if (!isRunning || isPaused || mouseControls.left.strategy.Value <= 1)
         return
 
-    ; 获取当前模式
-    mouseMode := mouseControls.left.mode.Value
+    ; 从策略值转换为模式值
+    mouseMode := mouseControls.left.strategy.Value - 1
 
     ; 按住模式处理
     if (mouseMode == SKILL_MODE_HOLD) {
@@ -78,11 +78,11 @@ PressRightClick() {
     global isRunning, isPaused, mouseControls, shiftEnabled
     global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
 
-    if (!isRunning || isPaused || !mouseControls.right.enable.Value)
+    if (!isRunning || isPaused || mouseControls.right.strategy.Value <= 1)
         return
 
-    ; 获取当前模式
-    mouseMode := mouseControls.right.mode.Value
+    ; 从策略值转换为模式值
+    mouseMode := mouseControls.right.strategy.Value - 1
 
     ; 按住模式处理
     if (mouseMode == SKILL_MODE_HOLD) {
