@@ -13,6 +13,34 @@ GetPresetPrefix(presetIndex := 0) {
 }
 
 /**
+ * 自动保存防抖定时器引用
+ */
+global autoSaveTimer := 0
+
+/**
+ * 调度自动保存（防抖，500ms内多次修改只保存一次）
+ */
+ScheduleAutoSave(*) {
+    global autoSaveTimer
+    ; 清除之前的定时器
+    if (autoSaveTimer != 0) {
+        SetTimer(autoSaveTimer, 0)
+    }
+    ; 创建新的延迟保存
+    autoSaveTimer := AutoSaveCallback
+    SetTimer(autoSaveTimer, -500)  ; 500ms后执行一次
+}
+
+/**
+ * 自动保存回调（实际执行保存）
+ */
+AutoSaveCallback(*) {
+    global autoSaveTimer
+    autoSaveTimer := 0
+    SaveSettings()
+}
+
+/**
  * 保存设置到INI文件（保存当前预设）
  */
 SaveSettings(*) {

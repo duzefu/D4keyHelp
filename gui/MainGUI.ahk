@@ -62,7 +62,20 @@ InitializeGUI() {
     ; 加载设置
     LoadSettings()
 
-    ; 设置窗口事件处理
-    myGui.OnEvent("Close", (*) => ExitApp())
-    myGui.OnEvent("Escape", (*) => ExitApp())
+    ; 设置窗口事件处理 - 退出时自动保存
+    myGui.OnEvent("Close", OnGuiClose)
+    myGui.OnEvent("Escape", OnGuiClose)
+}
+
+/**
+ * GUI关闭事件处理 - 退出前自动保存设置
+ */
+OnGuiClose(*) {
+    try {
+        SaveSettings()
+        DebugLog("退出前已自动保存设置")
+    } catch as err {
+        DebugLog("退出前保存设置失败: " err.Message)
+    }
+    ExitApp()
 }

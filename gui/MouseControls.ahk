@@ -19,6 +19,14 @@ CreateMouseControls() {
     }
     myGui.AddText("x35 y360 w60 h20", "左键:")
     myGui.AddText("x35 y390 w60 h20", "右键:")
+
+    ; 注册鼠标控件自动保存事件
+    mouseControls.left.enable.OnEvent("Click", ScheduleAutoSave)
+    mouseControls.left.interval.OnEvent("Change", ScheduleAutoSave)
+    mouseControls.left.mode.OnEvent("Change", ScheduleAutoSave)
+    mouseControls.right.enable.OnEvent("Click", ScheduleAutoSave)
+    mouseControls.right.interval.OnEvent("Change", ScheduleAutoSave)
+    mouseControls.right.mode.OnEvent("Change", ScheduleAutoSave)
 }
 
 /**
@@ -55,6 +63,8 @@ CreateUtilityControls() {
         interval: myGui.AddEdit("x435 y485 w30 h20", "1000")
     }
     mouseAutoMove.enable.OnEvent("Click", ToggleMouseAutoMove)
+    mouseAutoMove.enable.OnEvent("Click", ScheduleAutoSave)
+    mouseAutoMove.interval.OnEvent("Change", ScheduleAutoSave)
 
     ; 添加鼠标点击暂停宏控件
     pauseOnClick := {
@@ -62,6 +72,8 @@ CreateUtilityControls() {
         interval: myGui.AddEdit("x435 y455 w30 h20", "2000")
     }
     pauseOnClick.enable.OnEvent("Click", TogglePauseOnClick)
+    pauseOnClick.enable.OnEvent("Click", ScheduleAutoSave)
+    pauseOnClick.interval.OnEvent("Change", ScheduleAutoSave)
 
     ; 添加罗盘专用控件
     compassControl := {
@@ -69,4 +81,16 @@ CreateUtilityControls() {
         interval: myGui.AddEdit("x405 y425 w60 h20", "65000")
     }
     compassControl.enable.OnEvent("Click", ToggleCompass)
+    compassControl.enable.OnEvent("Click", ScheduleAutoSave)
+    compassControl.interval.OnEvent("Change", ScheduleAutoSave)
+
+    ; 注册功能键控件自动保存事件
+    utilityControls.dodge.enable.OnEvent("Click", ScheduleAutoSave)
+    utilityControls.dodge.interval.OnEvent("Change", ScheduleAutoSave)
+    utilityControls.potion.key.OnEvent("Change", ScheduleAutoSave)
+    utilityControls.potion.enable.OnEvent("Click", ScheduleAutoSave)
+    utilityControls.potion.interval.OnEvent("Change", ScheduleAutoSave)
+    utilityControls.forceMove.key.OnEvent("Change", ScheduleAutoSave)
+    utilityControls.forceMove.enable.OnEvent("Click", ScheduleAutoSave)
+    utilityControls.forceMove.interval.OnEvent("Change", ScheduleAutoSave)
 }

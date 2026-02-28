@@ -15,5 +15,10 @@ CreateSkillControls() {
             interval: myGui.AddEdit("x205 y" yPos " w60 h20", "300"),
             mode: myGui.AddDropDownList("x275 y" yPos " w100 h120 Choose1", skillModeNames)
         }
+        ; 注册自动保存事件
+        skillControls[A_Index].key.OnEvent("Change", ScheduleAutoSave)
+        skillControls[A_Index].enable.OnEvent("Click", ScheduleAutoSave)
+        skillControls[A_Index].interval.OnEvent("Change", ScheduleAutoSave)
+        skillControls[A_Index].mode.OnEvent("Change", ScheduleAutoSave)
     }
 }
