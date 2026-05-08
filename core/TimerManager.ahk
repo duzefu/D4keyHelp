@@ -22,32 +22,45 @@ StartAllTimers() {
 }
 
 /**
+ * 计算策略型控件的最终定时器间隔
+ * 包含 interval + delay/random 计算和最小20ms下限
+ * @param {Object} control - 含interval、delay、random属性的控件
+ * @returns {Integer} 最终定时器间隔（毫秒），未启用时返回0
+ */
+CalcStrategyInterval(control) {
+    if (control.strategy.Value <= 1)
+        return 0
+
+    interval := Integer(control.interval.Value)
+    delay := Integer(control.delay.Value)
+    isRandom := control.random.Value
+
+    if (delay != 0) {
+        if (isRandom)
+            interval += Random(0, Abs(delay))
+        else
+            interval += delay
+    }
+
+    if (interval < 20)
+        interval := 20
+
+    return interval
+}
+
+/**
  * 启动技能定时器
  */
 StartSkillTimers() {
     global skillControls, boundSkillTimers, timerStates
 
     for i in [1, 2, 3, 4] {
-        ; 策略值 > 1 表示已启用（2=连点, 3=维持BUFF, 4=按住）
-        if (skillControls[i].strategy.Value > 1) {
-            interval := Integer(skillControls[i].interval.Value)
-            ; 应用延迟
-            delay := Integer(skillControls[i].delay.Value)
-            isRandom := skillControls[i].random.Value
-            if (delay != 0) {
-                if (isRandom)
-                    interval += Random(0, Abs(delay))
-                else
-                    interval += delay
-            }
-            if (interval < 20)
-                interval := 20
-            if (interval > 0) {
-                boundSkillTimers[i] := PressSkill.Bind(i)
-                SetTimer(boundSkillTimers[i], interval)
-                timerStates[i] := true
-                DebugLog("启动技能" i "定时器，间隔: " interval)
-            }
+        interval := CalcStrategyInterval(skillControls[i])
+        if (interval > 0) {
+            boundSkillTimers[i] := PressSkill.Bind(i)
+            SetTimer(boundSkillTimers[i], interval)
+            timerStates[i] := true
+            DebugLog("启动技能" i "定时器，间隔: " interval)
         }
     }
 }
@@ -129,25 +142,11 @@ StartSingleTimer(name, control, timerFunc) {
 StartStrategyTimer(name, control, timerFunc) {
     global timerStates
 
-    ; 策略值 > 1 表示已启用
-    if (control.strategy.Value > 1) {
-        interval := Integer(control.interval.Value)
-        ; 应用延迟
-        delay := Integer(control.delay.Value)
-        isRandom := control.random.Value
-        if (delay != 0) {
-            if (isRandom)
-                interval += Random(0, Abs(delay))
-            else
-                interval += delay
-        }
-        if (interval < 20)
-            interval := 20
-        if (interval > 0) {
-            SetTimer(timerFunc, interval)
-            timerStates[name] := true
-            DebugLog("启动" name "定时器 - 间隔: " interval)
-        }
+    interval := CalcStrategyInterval(control)
+    if (interval > 0) {
+        SetTimer(timerFunc, interval)
+        timerStates[name] := true
+        DebugLog("启动" name "定时器 - 间隔: " interval)
     }
 }
 

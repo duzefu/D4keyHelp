@@ -405,46 +405,59 @@ LoadSettings() {
 }
 
 /**
+ * 读取策略值，兼容旧格式 (Enable+Mode -> Strategy)
+ * @param {String} file - 设置文件路径
+ * @param {String} section - INI Section
+ * @param {String} keyPrefix - 键名前缀（如 "Skill1" 或 "LeftClick"）
+ * @param {String} label - 日志标签
+ * @returns {Integer} strategy值（1=禁用 / 2=连点 / 3=维持BUFF / 4=按住）
+ */
+ReadStrategyValue(file, section, keyPrefix, label) {
+    global SKILL_MODE_CLICK
+
+    strategy := IniRead(file, section, keyPrefix . "Strategy", "")
+    if (strategy != "" && strategy != "ERROR") {
+        return Integer(strategy)
+    }
+
+    ; 旧格式兼容：从Enable+Mode转换为Strategy
+    enabled := Integer(IniRead(file, section, keyPrefix . "Enable", 0))
+    mode := Integer(IniRead(file, section, keyPrefix . "Mode", SKILL_MODE_CLICK))
+    strategy := enabled ? (mode + 1) : 1  ; 禁用=1，否则mode 1->2, 2->3, 3->4
+    DebugLog(label "从旧格式转换: Enable=" enabled ", Mode=" mode " -> Strategy=" strategy)
+    return strategy
+}
+
+/**
+ * 选择策略下拉框，越界时回退到禁用(1)
+ */
+ChooseStrategy(control, strategy) {
+    if (strategy >= 1 && strategy <= 4)
+        control.strategy.Choose(strategy)
+    else
+        control.strategy.Choose(1)
+}
+
+/**
  * 加载技能设置
  * @param {String} file - 设置文件路径
  * @param {String} prefix - Section前缀（如 "Preset1_"）
  */
 LoadSkillSettings(file, prefix := "") {
-    global skillControls, SKILL_MODE_CLICK
+    global skillControls
     section := prefix . "Skills"
 
     Loop 4 {
         try {
-            key := IniRead(file, section, "Skill" A_Index "Key", A_Index)
-
-            ; 尝试读取新格式（Strategy）
-            strategy := IniRead(file, section, "Skill" A_Index "Strategy", "")
-            if (strategy = "" || strategy = "ERROR") {
-                ; 旧格式兼容：从Enable+Mode转换为Strategy
-                enabled := Integer(IniRead(file, section, "Skill" A_Index "Enable", 0))
-                mode := Integer(IniRead(file, section, "Skill" A_Index "Mode", SKILL_MODE_CLICK))
-                if (!enabled)
-                    strategy := 1  ; 禁用
-                else
-                    strategy := mode + 1  ; mode 1->strategy 2, mode 2->strategy 3, mode 3->strategy 4
-                DebugLog("技能" A_Index "从旧格式转换: Enable=" enabled ", Mode=" mode " -> Strategy=" strategy)
-            } else {
-                strategy := Integer(strategy)
-            }
-
-            interval := IniRead(file, section, "Skill" A_Index "Interval", 300)
-            delay := IniRead(file, section, "Skill" A_Index "Delay", 10)
-            random := IniRead(file, section, "Skill" A_Index "Random", 1)
+            keyPrefix := "Skill" . A_Index
+            key := IniRead(file, section, keyPrefix . "Key", A_Index)
+            strategy := ReadStrategyValue(file, section, keyPrefix, "技能" . A_Index)
+            interval := IniRead(file, section, keyPrefix . "Interval", 300)
+            delay := IniRead(file, section, keyPrefix . "Delay", 10)
+            random := IniRead(file, section, keyPrefix . "Random", 1)
 
             skillControls[A_Index].key.Value := key
-
-            ; 设置策略下拉框
-            if (strategy >= 1 && strategy <= 4) {
-                skillControls[A_Index].strategy.Choose(strategy)
-            } else {
-                skillControls[A_Index].strategy.Choose(1)  ; 默认禁用
-            }
-
+            ChooseStrategy(skillControls[A_Index], strategy)
             skillControls[A_Index].interval.Value := interval
             skillControls[A_Index].delay.Value := delay
             skillControls[A_Index].random.Value := random
@@ -462,52 +475,23 @@ LoadSkillSettings(file, prefix := "") {
  * @param {String} prefix - Section前缀（如 "Preset1_"）
  */
 LoadMouseSettings(file, prefix := "") {
-    global mouseControls, mouseAutoMove, mouseAutoMoveEnabled, pauseOnClick, pauseOnClickEnabled, SKILL_MODE_CLICK
+    global mouseControls, mouseAutoMove, mouseAutoMoveEnabled, pauseOnClick, pauseOnClickEnabled
     section := prefix . "Mouse"
 
     try {
         ; 加载左键设置（兼容旧格式）
-        leftStrategy := IniRead(file, section, "LeftClickStrategy", "")
-        if (leftStrategy = "" || leftStrategy = "ERROR") {
-            ; 旧格式兼容
-            leftEnabled := Integer(IniRead(file, section, "LeftClickEnable", 0))
-            leftMode := Integer(IniRead(file, section, "LeftClickMode", SKILL_MODE_CLICK))
-            if (!leftEnabled)
-                leftStrategy := 1
-            else
-                leftStrategy := leftMode + 1
-            DebugLog("左键从旧格式转换: Enable=" leftEnabled ", Mode=" leftMode " -> Strategy=" leftStrategy)
-        } else {
-            leftStrategy := Integer(leftStrategy)
-        }
+        leftStrategy := ReadStrategyValue(file, section, "LeftClick", "左键")
         mouseControls.left.interval.Value := IniRead(file, section, "LeftClickInterval", 80)
         mouseControls.left.delay.Value := IniRead(file, section, "LeftClickDelay", 10)
         mouseControls.left.random.Value := IniRead(file, section, "LeftClickRandom", 1)
-        if (leftStrategy >= 1 && leftStrategy <= 4)
-            mouseControls.left.strategy.Choose(leftStrategy)
-        else
-            mouseControls.left.strategy.Choose(1)
+        ChooseStrategy(mouseControls.left, leftStrategy)
 
         ; 加载右键设置（兼容旧格式）
-        rightStrategy := IniRead(file, section, "RightClickStrategy", "")
-        if (rightStrategy = "" || rightStrategy = "ERROR") {
-            rightEnabled := Integer(IniRead(file, section, "RightClickEnable", 0))
-            rightMode := Integer(IniRead(file, section, "RightClickMode", SKILL_MODE_CLICK))
-            if (!rightEnabled)
-                rightStrategy := 1
-            else
-                rightStrategy := rightMode + 1
-            DebugLog("右键从旧格式转换: Enable=" rightEnabled ", Mode=" rightMode " -> Strategy=" rightStrategy)
-        } else {
-            rightStrategy := Integer(rightStrategy)
-        }
+        rightStrategy := ReadStrategyValue(file, section, "RightClick", "右键")
         mouseControls.right.interval.Value := IniRead(file, section, "RightClickInterval", 300)
         mouseControls.right.delay.Value := IniRead(file, section, "RightClickDelay", 10)
         mouseControls.right.random.Value := IniRead(file, section, "RightClickRandom", 1)
-        if (rightStrategy >= 1 && rightStrategy <= 4)
-            mouseControls.right.strategy.Choose(rightStrategy)
-        else
-            mouseControls.right.strategy.Choose(1)
+        ChooseStrategy(mouseControls.right, rightStrategy)
 
         ; 加载自动移动设置
         mouseAutoMove.enable.Value := IniRead(file, section, "MouseAutoMoveEnable", 0)

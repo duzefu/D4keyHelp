@@ -21,18 +21,10 @@ SendKey(key) {
  * 按下翻滚键(空格)
  */
 PressDodge() {
-    global isRunning, isPaused, utilityControls, shiftEnabled
+    global isRunning, isPaused, utilityControls
 
     if (isRunning && !isPaused && utilityControls.dodge.enable.Value = 1) {
-        if (shiftEnabled) {
-            Send "{Shift down}"
-            Sleep 10
-            Send "{Space}"
-            Sleep 10
-            Send "{Shift up}"
-        } else {
-            Send "{Space}"
-        }
+        SendKey("Space")
         DebugLog("按下翻滚键")
     }
 }
@@ -41,20 +33,12 @@ PressDodge() {
  * 按下喝药键
  */
 PressPotion() {
-    global isRunning, isPaused, utilityControls, shiftEnabled
+    global isRunning, isPaused, utilityControls
 
     if (isRunning && !isPaused && utilityControls.potion.enable.Value = 1) {
         key := utilityControls.potion.key.Value
-        if key != "" {
-            if (shiftEnabled) {
-                Send "{Shift down}"
-                Sleep 10
-                Send "{" key "}"
-                Sleep 10
-                Send "{Shift up}"
-            } else {
-                Send "{" key "}"
-            }
+        if (key != "") {
+            SendKey(key)
             DebugLog("按下喝药键: " key)
         }
     }
@@ -64,20 +48,12 @@ PressPotion() {
  * 按下强制移动键
  */
 PressForceMove() {
-    global isRunning, isPaused, utilityControls, shiftEnabled
+    global isRunning, isPaused, utilityControls
 
     if (isRunning && !isPaused && utilityControls.forceMove.enable.Value = 1) {
         key := utilityControls.forceMove.key.Value
-        if key != "" {
-            if (shiftEnabled) {
-                Send "{Shift down}"
-                Sleep 10
-                Send "{" key "}"
-                Sleep 10
-                Send "{Shift up}"
-            } else {
-                Send "{" key "}"
-            }
+        if (key != "") {
+            SendKey(key)
             DebugLog("按下强制移动键: " key)
         }
     }
@@ -85,13 +61,27 @@ PressForceMove() {
 
 /**
  * 重置所有按住模式的按键状态
+ * 释放任何仍处于按下状态的技能键、停止对应的检查定时器
  */
 ResetAllHoldKeyStates() {
-    ; 使用全局静态变量来跟踪按键状态
-    static keyStates := Map()
+    global holdKeyStates, boundCheckHoldTimers, skillControls
 
-    ; 清空按键状态映射
-    keyStates := Map()
+    ; 释放所有仍在按下的Hold模式按键并停止其检查定时器
+    for skillNum, isHeld in holdKeyStates {
+        if (isHeld && skillControls.Has(skillNum)) {
+            key := skillControls[skillNum].key.Value
+            if (key != "") {
+                Send "{" key " up}"
+                DebugLog("ResetAllHoldKeyStates 释放技能" skillNum " 键: " key)
+            }
+        }
+        if (boundCheckHoldTimers.Has(skillNum)) {
+            SetTimer(boundCheckHoldTimers[skillNum], 0)
+        }
+    }
+
+    holdKeyStates := Map()
+    boundCheckHoldTimers := Map()
     DebugLog("重置所有按住模式的按键状态")
 }
 

@@ -5,7 +5,6 @@ global debugLogFile := A_ScriptDir "\debugd4.log"
 global isRunning := false
 global isPaused := false
 global previouslyPaused := false
-global counter := 0
 
 ; GUI相关变量
 global myGui := ""
@@ -18,7 +17,6 @@ global utilityControls := {}
 
 ; 功能状态变量
 global shiftEnabled := false
-global skillActiveState := false
 global mouseAutoMoveEnabled := false
 global mouseAutoMoveCurrentPoint := 1
 global pauseOnClickEnabled := false  ; 添加鼠标点击暂停功能状态变量
@@ -46,11 +44,14 @@ global skillPositions := Map(
 )
 
 ; 定时器相关变量
-global boundSkillTimers := Map()  ; 存储绑定的技能定时器函数
-global timerStates := Map()       ; 用于跟踪定时器状态
+global boundSkillTimers := Map()       ; 存储绑定的技能定时器函数
+global boundCheckHoldTimers := Map()   ; 存储绑定的Hold模式检查定时器（用于SetTimer停止）
+global timerStates := Map()            ; 用于跟踪定时器状态
+
+; Hold模式按键状态（在PressSkill/CheckHoldKey/ResetAllHoldKeyStates之间共享）
+global holdKeyStates := Map()
 
 ; 控件变量
-global forceMove := {}            ; 强制移动控件
 global mouseAutoMove := {}        ; 鼠标自动移动控件
 global pauseOnClick := {}         ; 鼠标点击暂停控件
 global compassControl := {}       ; 罗盘专用控件

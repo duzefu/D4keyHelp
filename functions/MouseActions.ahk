@@ -31,20 +31,35 @@ InterruptibleSleep(duration) {
 }
 
 /**
+ * 带可选Shift修饰的鼠标点击
+ * @param {String} button - "" 表示左键，"right" 表示右键
+ */
+ClickWithShift(button := "") {
+    global shiftEnabled
+
+    if (shiftEnabled) {
+        Send "{Shift down}"
+        Sleep 10
+        Click button
+        Sleep 10
+        Send "{Shift up}"
+    } else {
+        Click button
+    }
+}
+
+/**
  * 鼠标左键点击
  */
 PressLeftClick() {
-    global isRunning, isPaused, mouseControls, shiftEnabled
-    global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
+    global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD
 
     if (!isRunning || isPaused || mouseControls.left.strategy.Value <= 1)
         return
 
-    ; 从策略值转换为模式值
     mouseMode := mouseControls.left.strategy.Value - 1
 
-    ; 按住模式处理
-    if (mouseMode == SKILL_MODE_HOLD) {
+    if (mouseMode = SKILL_MODE_HOLD) {
         static leftMouseHeld := false
 
         if (!leftMouseHeld) {
@@ -55,18 +70,8 @@ PressLeftClick() {
             leftMouseHeld := true
             DebugLog("按住鼠标左键")
         }
-    }
-    ; 连点模式处理
-    else {
-        if (shiftEnabled) {
-            Send "{Shift down}"
-            Sleep 10
-            Click
-            Sleep 10
-            Send "{Shift up}"
-        } else {
-            Click
-        }
+    } else {
+        ClickWithShift()
         DebugLog("点击鼠标左键")
     }
 }
@@ -75,17 +80,14 @@ PressLeftClick() {
  * 鼠标右键点击
  */
 PressRightClick() {
-    global isRunning, isPaused, mouseControls, shiftEnabled
-    global SKILL_MODE_CLICK, SKILL_MODE_BUFF, SKILL_MODE_HOLD
+    global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD
 
     if (!isRunning || isPaused || mouseControls.right.strategy.Value <= 1)
         return
 
-    ; 从策略值转换为模式值
     mouseMode := mouseControls.right.strategy.Value - 1
 
-    ; 按住模式处理
-    if (mouseMode == SKILL_MODE_HOLD) {
+    if (mouseMode = SKILL_MODE_HOLD) {
         static rightMouseHeld := false
 
         if (!rightMouseHeld) {
@@ -96,18 +98,8 @@ PressRightClick() {
             rightMouseHeld := true
             DebugLog("按住鼠标右键")
         }
-    }
-    ; 连点模式处理
-    else {
-        if (shiftEnabled) {
-            Send "{Shift down}"
-            Sleep 10
-            Click "right"
-            Sleep 10
-            Send "{Shift up}"
-        } else {
-            Click "right"
-        }
+    } else {
+        ClickWithShift("right")
         DebugLog("点击鼠标右键")
     }
 }

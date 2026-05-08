@@ -60,32 +60,44 @@ ToggleShift(*) {
 }
 
 /**
+ * 在宏运行中根据enable状态启停一个简单定时器
+ * 共享给ToggleMouseAutoMove/ToggleCompass等切换函数使用
+ * @param {String} stateKey - timerStates中的键名
+ * @param {Object} control - 含interval属性的控件
+ * @param {Function} timerFunc - 定时器函数
+ * @param {Boolean} enabled - 启用/禁用
+ * @param {String} label - 日志标签
+ */
+ApplyTimerToggle(stateKey, control, timerFunc, enabled, label) {
+    global isRunning, isPaused, timerStates
+
+    if (!isRunning || isPaused)
+        return
+
+    if (enabled) {
+        interval := Integer(control.interval.Value)
+        if (interval > 0) {
+            SetTimer(timerFunc, interval)
+            timerStates[stateKey] := true
+            DebugLog("启动" label "定时器 - 间隔: " interval)
+        }
+    } else {
+        SetTimer(timerFunc, 0)
+        timerStates[stateKey] := false
+        DebugLog("停止" label "定时器")
+    }
+}
+
+/**
  * 切换鼠标自动移动功能
  */
 ToggleMouseAutoMove(*) {
-    global mouseAutoMoveEnabled, mouseAutoMove, isRunning, isPaused, timerStates
+    global mouseAutoMoveEnabled, mouseAutoMove
 
     mouseAutoMoveEnabled := !mouseAutoMoveEnabled
-
-    ; 更新GUI勾选框状态以匹配当前状态
     mouseAutoMove.enable.Value := mouseAutoMoveEnabled ? 1 : 0
 
-    ; 如果宏已经在运行，则更新定时器状态
-    if (isRunning && !isPaused) {
-        if (mouseAutoMoveEnabled) {
-            interval := Integer(mouseAutoMove.interval.Value)
-            if (interval > 0) {
-                SetTimer(MoveMouseToNextPoint, interval)
-                timerStates["mouseAutoMove"] := true
-                DebugLog("启动鼠标自动移动定时器 - 间隔: " interval)
-            }
-        } else {
-            SetTimer(MoveMouseToNextPoint, 0)
-            timerStates["mouseAutoMove"] := false
-            DebugLog("停止鼠标自动移动定时器")
-        }
-    }
-
+    ApplyTimerToggle("mouseAutoMove", mouseAutoMove, MoveMouseToNextPoint, mouseAutoMoveEnabled, "鼠标自动移动")
     DebugLog("鼠标自动移动状态切换: " . (mouseAutoMoveEnabled ? "启用" : "禁用"))
 }
 
@@ -126,28 +138,11 @@ ResumeAfterClickPause() {
  * 切换罗盘专用功能
  */
 ToggleCompass(*) {
-    global compassEnabled, compassControl, isRunning, isPaused, timerStates
+    global compassEnabled, compassControl
 
     compassEnabled := !compassEnabled
-
-    ; 更新GUI勾选框状态以匹配当前状态
     compassControl.enable.Value := compassEnabled ? 1 : 0
 
-    ; 如果宏已经在运行，则更新定时器状态
-    if (isRunning && !isPaused) {
-        if (compassEnabled) {
-            interval := Integer(compassControl.interval.Value)
-            if (interval > 0) {
-                SetTimer(CompassClick, interval)
-                timerStates["compass"] := true
-                DebugLog("启动罗盘专用定时器 - 间隔: " interval)
-            }
-        } else {
-            SetTimer(CompassClick, 0)
-            timerStates["compass"] := false
-            DebugLog("停止罗盘专用定时器")
-        }
-    }
-
+    ApplyTimerToggle("compass", compassControl, CompassClick, compassEnabled, "罗盘专用")
     DebugLog("罗盘专用状态切换: " . (compassEnabled ? "启用" : "禁用"))
 }
