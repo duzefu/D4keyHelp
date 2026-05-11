@@ -40,7 +40,7 @@ CreateMainGUI() {
     myGui.AddButton("x320 y502 w120 h26", "开始/停止(F1)").OnEvent("Click", ToggleMacro)
     myGui.AddButton("x450 y502 w80 h26", "保存设置").OnEvent("Click", SaveSettings)
     myGui.SetFont("s9", "Segoe UI")
-    myGui.AddText("x25 y532 w400 h20", "提示：仅在暗黑破坏神4窗口活动时生效")
+    myGui.AddText("x25 y532 w600 h20", "提示：仅在暗黑破坏神4窗口活动时生效  |  右键配置标签可重命名")
 }
 
 /**
