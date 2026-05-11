@@ -18,6 +18,10 @@ CreateMainGUI() {
     presetTab.OnEvent("ContextMenu", OnPresetTabRightClick)
     presetTab.UseTab(0)
 
+    ; 右键重命名提示（放在标签页右侧）
+    myGui.SetFont("s9 c9CA3AF", "Segoe UI")
+    myGui.AddText("x310 y10 w390 h20 BackgroundTrans Right", "右键标签可重命名")
+
     ; ========== 按键宏设置 GroupBox ==========
     myGui.SetFont("s11 bold c1F2937", "Segoe UI")
     myGui.AddGroupBox("x15 y45 w690 h290", "  按键宏设置")
@@ -51,7 +55,7 @@ CreateMainGUI() {
     myGui.AddButton("x495 y588 w100 h34", "保存设置").OnEvent("Click", SaveSettings)
 
     myGui.SetFont("s9 c6B7280", "Segoe UI")
-    myGui.AddText("x25 y630 w680 h20 BackgroundTrans", "提示：仅在暗黑破坏神4窗口活动时生效   ·   右键配置标签可重命名")
+    myGui.AddText("x25 y630 w680 h20 BackgroundTrans", "提示：仅在暗黑破坏神4窗口活动时生效")
 }
 
 /**
