@@ -43,7 +43,15 @@ OnWindowChange(isActive) {
  */
 UpdateStatus(status, barText) {
     global statusText, statusBar
-    statusText.Value := "状态: " status
+    statusText.Value := "● 状态: " status
+    ; 根据状态着色：运行中=绿，暂停=橙，其他=灰
+    if (InStr(status, "运行"))
+        color := "10B981"
+    else if (InStr(status, "暂停"))
+        color := "F59E0B"
+    else
+        color := "6B7280"
+    statusText.SetFont("c" color)
     statusBar.Text := barText
     DebugLog("状态更新: " status " | " barText)
 }

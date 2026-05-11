@@ -1,4 +1,4 @@
-; ========== GUI创建（仿D3keyHelper风格） ==========
+; ========== GUI创建（现代明亮风格） ==========
 /**
  * 创建主GUI界面
  */
@@ -7,40 +7,51 @@ CreateMainGUI() {
 
     ; 创建主窗口
     myGui := Gui("", "暗黑4助手 v2.1")
-    myGui.SetFont("s11", "Segoe UI")
-    myGui.MarginX := 5
+    myGui.BackColor := "F5F7FA"
+    myGui.SetFont("s10", "Segoe UI")
+    myGui.MarginX := 8
     myGui.MarginY := 10
 
-    ; ========== Tab2预设配置区域（仿d3keyhelper配置1~4风格） ==========
-    presetTab := myGui.AddTab2("x5 y5 w630 h555", [presetNames[1], presetNames[2], presetNames[3], presetNames[4]])
+    ; ========== Tab2预设配置区域 ==========
+    presetTab := myGui.AddTab2("x5 y5 w710 h620", [presetNames[1], presetNames[2], presetNames[3], presetNames[4]])
     presetTab.OnEvent("Change", OnPresetTabChange)
     presetTab.OnEvent("ContextMenu", OnPresetTabRightClick)
-    presetTab.UseTab(0)  ; 后续控件不绑定到特定tab
+    presetTab.UseTab(0)
 
     ; ========== 按键宏设置 GroupBox ==========
-    myGui.AddGroupBox("x15 y38 w610 h260", "按键宏设置")
-    myGui.SetFont("s9", "Segoe UI")
+    myGui.SetFont("s11 bold c1F2937", "Segoe UI")
+    myGui.AddGroupBox("x15 y45 w690 h290", "  按键宏设置")
 
-    ; 列标题（仿D3表格风格）
-    myGui.AddText("x115 y58 w65 center", "快捷键")
-    myGui.AddText("x190 y58 w85 center", "策略")
-    myGui.AddText("x280 y58 w130 center", "执行间隔（毫秒）")
-    myGui.AddText("x420 y58 w80 center", "延迟（毫秒）")
-    myGui.AddText("x510 y58 w60 center", "延迟随机")
+    ; 列标题（加粗+主色调）
+    myGui.SetFont("s9 bold c2563EB", "Segoe UI")
+    myGui.AddText("x130 y75 w75 center", "快捷键")
+    myGui.AddText("x215 y75 w95 center", "策略")
+    myGui.AddText("x320 y75 w125 center", "执行间隔 (ms)")
+    myGui.AddText("x450 y75 w100 center", "延迟 (ms)")
+    myGui.AddText("x555 y75 w70 center", "延迟随机")
 
-    ; 创建技能行（4个技能 + 左键 + 右键）
+    ; 创建技能行
+    myGui.SetFont("s10 norm c1F2937", "Segoe UI")
     CreateSkillRows()
 
     ; ========== 额外设置 GroupBox ==========
+    myGui.SetFont("s11 bold c1F2937", "Segoe UI")
+    myGui.AddGroupBox("x15 y350 w690 h225", "  额外设置")
+    myGui.SetFont("s10 norm c1F2937", "Segoe UI")
     CreateExtraSettings()
 
     ; ========== 底部状态和控制区域 ==========
-    myGui.SetFont("s10", "Segoe UI")
-    statusText := myGui.AddText("x25 y505 w200 h20", "状态: 未运行")
-    myGui.AddButton("x320 y502 w120 h26", "开始/停止(F1)").OnEvent("Click", ToggleMacro)
-    myGui.AddButton("x450 y502 w80 h26", "保存设置").OnEvent("Click", SaveSettings)
-    myGui.SetFont("s9", "Segoe UI")
-    myGui.AddText("x25 y532 w600 h20", "提示：仅在暗黑破坏神4窗口活动时生效  |  右键配置标签可重命名")
+    myGui.SetFont("s11 bold c10B981", "Segoe UI")
+    statusText := myGui.AddText("x25 y593 w260 h26 BackgroundTrans", "● 状态: 未运行")
+    statusText.SetFont("c6B7280")  ; 初始未运行=灰
+
+    myGui.SetFont("s11 bold", "Segoe UI")
+    myGui.AddButton("x340 y588 w140 h34 Default", "开始 / 停止  (F1)").OnEvent("Click", ToggleMacro)
+    myGui.SetFont("s10 norm")
+    myGui.AddButton("x495 y588 w100 h34", "保存设置").OnEvent("Click", SaveSettings)
+
+    myGui.SetFont("s9 c6B7280", "Segoe UI")
+    myGui.AddText("x25 y630 w680 h20 BackgroundTrans", "提示：仅在暗黑破坏神4窗口活动时生效   ·   右键配置标签可重命名")
 }
 
 /**
@@ -59,7 +70,7 @@ InitializeGUI() {
     LoadSettings()
 
     ; 显示GUI（此时下拉框值已正确设置，首次渲染即为正确状态）
-    myGui.Show("w640 h580")
+    myGui.Show("w720 h680")
 
     ; 强制重绘窗口，确保所有控件（尤其是Tab2内的DropDownList）正确显示
     WinRedraw(myGui.Hwnd)

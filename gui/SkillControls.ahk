@@ -13,32 +13,32 @@ CreateSkillRows() {
     defaultKeys := ["1", "2", "3", "4", "LButton", "RButton"]
 
     Loop 6 {
-        yPos := 82 + (A_Index - 1) * 34
+        yPos := 100 + (A_Index - 1) * 38
         row := A_Index
 
         ; 行标签
-        myGui.AddText("x25 y" (yPos + 3) " w85 right", skillLabels[row])
+        myGui.AddText("x25 y" (yPos + 4) " w95 right", skillLabels[row])
 
         ; 快捷键（技能1-4用Hotkey，左右键用禁用的Edit）
         if (row <= 4) {
-            keyCtrl := myGui.AddHotkey("x115 y" yPos " w65", defaultKeys[row])
+            keyCtrl := myGui.AddHotkey("x130 y" yPos " w75", defaultKeys[row])
         } else {
-            keyCtrl := myGui.AddEdit("x115 y" yPos " w65 Disabled", defaultKeys[row])
+            keyCtrl := myGui.AddEdit("x130 y" yPos " w75 Disabled", defaultKeys[row])
         }
 
         ; 策略下拉框（禁用/连点/维持BUFF/按住）
-        strategyCtrl := myGui.AddDropDownList("x190 y" yPos " w85 Choose1", strategyNames)
+        strategyCtrl := myGui.AddDropDownList("x215 y" yPos " w95 Choose1", strategyNames)
 
         ; 执行间隔（Edit + UpDown）
-        intervalEdit := myGui.AddEdit("x290 y" yPos " w110 Number", "300")
+        intervalEdit := myGui.AddEdit("x325 y" yPos " w115 Number", "300")
         intervalUpDown := myGui.AddUpDown("Range20-60000", 300)
 
         ; 延迟（Edit + UpDown）
-        delayEdit := myGui.AddEdit("x420 y" yPos " w75", "10")
+        delayEdit := myGui.AddEdit("x455 y" yPos " w85", "10")
         delayUpDown := myGui.AddUpDown("Range-30000-30000", 10)
 
         ; 延迟随机复选框
-        randomCheck := myGui.AddCheckbox("x520 y" (yPos + 2) " Checked", "")
+        randomCheck := myGui.AddCheckbox("x575 y" (yPos + 4) " Checked", "")
 
         ; 构造行数据对象
         rowData := {
