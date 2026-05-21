@@ -55,7 +55,7 @@ CreateMainGUI() {
     myGui.AddButton("x495 y588 w100 h34", "保存设置").OnEvent("Click", SaveSettings)
 
     myGui.SetFont("s9 c6B7280", "Segoe UI")
-    myGui.AddText("x25 y630 w680 h20 BackgroundTrans", "提示：仅在暗黑破坏神4窗口活动时生效")
+    myGui.AddText("x25 y630 w680 h20 BackgroundTrans", "提示：F1 启停宏 | F3 自动嬗变/取消（魔盒界面）| Tab 查看地图暂停 | 仅暗黑4窗口生效")
 }
 
 /**

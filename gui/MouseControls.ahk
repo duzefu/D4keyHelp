@@ -42,11 +42,12 @@ CreateExtraSettings() {
     pauseOnClickIntervalEdit := myGui.AddEdit("x460 y514 w80 Number", "3000")
     pauseOnClickUpDown := myGui.AddUpDown("Range500-60000", 3000)
 
-    ; Row 6: 罗盘专用
+    ; Row 6: 罗盘专用 + 自动嬗变
     compassEnable := myGui.AddCheckbox("x35 y550 w120 h22", "罗盘专用")
     myGui.AddText("x165 y550 w100 h22", "间隔 (ms)：")
     compassIntervalEdit := myGui.AddEdit("x270 y548 w90 Number", "65000")
     compassUpDown := myGui.AddUpDown("Range1000-600000", 65000)
+    myGui.AddButton("x480 y547 w120 h24", "自动嬗变 (F3)").OnEvent("Click", AutoTransmute)
 
     ; 存储控件引用
     utilityControls := {

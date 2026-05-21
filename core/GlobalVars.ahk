@@ -23,6 +23,7 @@ global pauseOnClickEnabled := false  ; 添加鼠标点击暂停功能状态变�
 global temporaryPaused := false      ; 添加临时暂停状态变量
 global compassEnabled := false       ; 罗盘专用功能状态变量
 global compassPaused := false        ; 罗盘操作时的暂停状态
+global isAutoTransmuting := false    ; 自动嬗变运行状态（F3再次按下可取消）
 
 ; 技能模式常量
 global SKILL_MODE_CLICK := 1    ; 连点模式
