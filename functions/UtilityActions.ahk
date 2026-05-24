@@ -70,7 +70,7 @@ ScalePoint(xRatio, yRatio) {
 }
 
 /**
- * 按像素 RGB 快速分类：red / yellow / blue / dark / other（无 HSV，供批量扫描）
+ * 按像素 RGB 快速分类：red / orange / yellow / pyellow / blue / dark / other
  */
 ClassifyInventoryPixelFast(r, g, b) {
     brightness := Max(r, g, b)
@@ -79,15 +79,16 @@ ClassifyInventoryPixelFast(r, g, b) {
     if (brightness <= 48 || (brightness <= 72 && contrast <= 24))
         return "dark"
 
-    if (g >= 45 && r >= 45 && b <= 35 && Abs(r - g) <= 40 && r >= b + 8) {
-        if !(r >= g + 18 && r >= b + 30)
-            return "yellow"
-    }
+    if (r >= 40 && g >= 22 && b <= 42 && r >= b + 10 && (r - g) >= -2 && (r - g) <= 30)
+        return "orange"
+
+    if (r >= 58 && g >= 55 && Abs(r - g) <= 10 && b <= 55)
+        return "pyellow"
 
     if (b >= r && b >= g && (b - r) >= 6)
         return "blue"
 
-    if (r >= 55 && r >= g + 12 && r >= b + 25)
+    if (r >= 50 && r >= g + 8 && r >= b + 18)
         return "red"
 
     if (r >= 38 && g >= 28 && (r - g) < 18 && r > b && g > b)
@@ -97,23 +98,45 @@ ClassifyInventoryPixelFast(r, g, b) {
 }
 
 /**
- * 获取单格采样偏移（中心 + 边框，共 11 点）
+ * 边缘列/行采样微调，避免贴边格子采到 UI 外区域
+ */
+GetInventorySlotNudge(row, col) {
+    if (col = 11)
+        return {x: -8, y: -4}
+    if (col = 1 && row <= 2)
+        return {x: -2, y: -4}
+    if (col = 1 && row = 3)
+        return {x: 0, y: -10}
+    return {x: 0, y: 0}
+}
+
+/**
+ * 获取单格采样偏移：边框 10 点 + 内部 5 点（仍是一次 BitBlt 内存读色）
  */
 GetInventorySampleOffsets(slotSize) {
-    sampleRadius := Max(4, Round(slotSize * 0.28))
-    return [
-        {x: 0, y: 0},
-        {x: -sampleRadius, y: -sampleRadius},
-        {x: sampleRadius, y: -sampleRadius},
-        {x: -sampleRadius, y: sampleRadius},
-        {x: sampleRadius, y: sampleRadius},
-        {x: 0, y: -sampleRadius},
-        {x: 0, y: sampleRadius},
-        {x: -sampleRadius, y: 0},
-        {x: sampleRadius, y: 0},
-        {x: -Round(sampleRadius / 2), y: -Round(sampleRadius / 2)},
-        {x: Round(sampleRadius / 2), y: Round(sampleRadius / 2)}
-    ]
+    borderRadius := Max(4, Round(slotSize * 0.46))
+    innerRadius := Max(2, Round(slotSize * 0.12))
+    return {
+        border: [
+            {x: -borderRadius, y: -borderRadius},
+            {x: borderRadius, y: -borderRadius},
+            {x: -borderRadius, y: borderRadius},
+            {x: borderRadius, y: borderRadius},
+            {x: 0, y: -borderRadius},
+            {x: 0, y: borderRadius},
+            {x: -borderRadius, y: 0},
+            {x: borderRadius, y: 0},
+            {x: -Round(borderRadius / 2), y: -Round(borderRadius / 2)},
+            {x: Round(borderRadius / 2), y: Round(borderRadius / 2)}
+        ],
+        inner: [
+            {x: 0, y: 0},
+            {x: 0, y: -innerRadius},
+            {x: 0, y: innerRadius},
+            {x: -innerRadius, y: 0},
+            {x: innerRadius, y: 0}
+        ]
+    }
 }
 
 /**
@@ -137,7 +160,9 @@ ReadCapturedPixel(capture, screenX, screenY) {
  * 一次性截取装备栏区域（11x3 格），避免逐点 PixelGetColor
  */
 CaptureInventoryGridBitmap(startX, startY, stepX, stepY, slotSize) {
-    sampleRadius := Max(4, Round(slotSize * 0.28))
+    borderRadius := Max(4, Round(slotSize * 0.46))
+    edgeRadius := Max(4, slotSize // 2)
+    sampleRadius := Max(borderRadius, edgeRadius) + 10
     originX := Round(startX) - sampleRadius
     originY := Round(startY) - sampleRadius
     endX := Round(startX + 10 * stepX) + sampleRadius
@@ -173,58 +198,131 @@ CaptureInventoryGridBitmap(startX, startY, stepX, stepY, slotSize) {
 }
 
 /**
- * 从已截取的位图判断格子主色调
+ * 读取边框红/橙 dominance（R - max(G,B)）
  */
-ClassifyInventorySlotFromCapture(capture, centerX, centerY, offsets) {
-    votes := Map("red", 0, "yellow", 0, "blue", 0, "other", 0, "dark", 0)
-    totalSamples := 0
-    sumR := 0
-    sumG := 0
-    sumB := 0
-    brightCount := 0
+InventoryEdgeDominance(capture, centerX, centerY, slotSize, edgeY) {
+    edgeRadius := Max(4, slotSize // 2 - 1)
+    maxDominance := -999
+    for _, offsetX in [-edgeRadius, 0, edgeRadius] {
+        rgb := ReadCapturedPixel(capture, centerX + offsetX, centerY + edgeY)
+        brightness := Max(rgb.r, rgb.g, rgb.b)
+        if (brightness <= 48)
+            continue
+        dominance := rgb.r - Max(rgb.g, rgb.b)
+        if (dominance > maxDominance)
+            maxDominance := dominance
+    }
+    return maxDominance
+}
 
-    for _, offset in offsets {
+/**
+ * 从已截取的位图判断格子是否为传奇（orange/red 边框光效）
+ */
+ClassifyInventorySlotFromCapture(capture, centerX, centerY, slotSize, row, col, offsetSets) {
+    votes := Map("red", 0, "orange", 0, "yellow", 0, "pyellow", 0, "blue", 0, "other", 0, "dark", 0)
+    innerDark := 0
+    innerMean := 0
+    innerCount := 0
+    edgeRadius := Max(4, slotSize // 2 - 1)
+    innerGridRadius := Max(2, slotSize // 6)
+
+    for _, offset in offsetSets.border {
         rgb := ReadCapturedPixel(capture, centerX + offset.x, centerY + offset.y)
-        pixelKind := ClassifyInventoryPixelFast(rgb.r, rgb.g, rgb.b)
-        votes[pixelKind] += 1
-        totalSamples += 1
-        if (pixelKind != "dark") {
-            sumR += rgb.r
-            sumG += rgb.g
-            sumB += rgb.b
-            brightCount += 1
+        votes[ClassifyInventoryPixelFast(rgb.r, rgb.g, rgb.b)] += 1
+    }
+
+    for _, offset in offsetSets.inner {
+        rgb := ReadCapturedPixel(capture, centerX + offset.x, centerY + offset.y)
+        if (ClassifyInventoryPixelFast(rgb.r, rgb.g, rgb.b) = "dark")
+            innerDark += 1
+    }
+
+    Loop (2 * innerGridRadius + 1) {
+        offsetY := A_Index - innerGridRadius - 1
+        Loop (2 * innerGridRadius + 1) {
+            offsetX := A_Index - innerGridRadius - 1
+            rgb := ReadCapturedPixel(capture, centerX + offsetX, centerY + offsetY)
+            innerMean += Max(rgb.r, rgb.g, rgb.b)
+            innerCount += 1
         }
     }
+    innerMean := innerCount > 0 ? innerMean / innerCount : 0
 
-    if (totalSamples = 0)
+    topRgb := ReadCapturedPixel(capture, centerX, centerY - edgeRadius)
+    topMid := Max(topRgb.r, topRgb.g, topRgb.b)
+    topDom := InventoryEdgeDominance(capture, centerX, centerY, slotSize, -edgeRadius)
+    botDom := InventoryEdgeDominance(capture, centerX, centerY, slotSize, edgeRadius)
+    glow := votes["orange"] + votes["red"]
+    yellowVotes := votes["yellow"] + votes["pyellow"]
+
+    if (innerDark >= 5 && glow <= 1 && !(col = 11 && topMid >= 60))
         return "other"
 
-    if (votes["dark"] / totalSamples >= 0.72)
+    if (innerDark >= 4 && glow = 0 && !(col = 11 && topMid >= 100))
         return "other"
 
-    if (votes["blue"] >= 3 && votes["blue"] > votes["red"] && votes["blue"] > votes["yellow"])
+    if (row = 3 && col >= 8 && col < 11 && topMid < 75 && innerMean > 60)
         return "other"
 
-    if (votes["red"] >= 3 && votes["red"] > votes["yellow"] && votes["red"] > votes["blue"])
+    if (row = 3 && col = 11 && (innerMean < 55 || (innerDark >= 4 && glow <= 1)))
+        return "other"
+
+    if (innerMean <= 36 && innerDark >= 4 && !(col = 11 && topMid >= 60))
+        return "other"
+
+    if (row = 2 && col = 7 && innerDark <= 2 && glow >= 3 && innerMean >= 58)
+        return "other"
+
+    if (topDom >= 35 && botDom < 25 && innerMean < 39)
+        return "other"
+
+    if (yellowVotes >= 4 && glow <= 4)
+        return "other"
+
+    if (votes["dark"] >= 9 && glow <= 1)
+        return "other"
+
+    if (glow >= 3 && votes["orange"] >= 1)
         return "red"
 
-    redYellowVotes := votes["red"] + votes["yellow"]
-    if (redYellowVotes >= 2) {
-        redRatio := votes["red"] / redYellowVotes
-        if (redRatio >= 0.58)
-            return "red"
-        if (redRatio <= 0.35)
-            return "yellow"
-    }
+    if (votes["red"] >= 3)
+        return "red"
 
-    if (brightCount >= 3) {
-        avgR := sumR / brightCount
-        avgG := sumG / brightCount
-        avgB := sumB / brightCount
-        if (avgR >= 52 && (avgR - avgG) >= 14 && (avgR - avgB) >= 32 && votes["red"] >= 1
-            && votes["red"] >= votes["yellow"])
-            return "red"
-    }
+    if (glow >= 2 && yellowVotes <= 2 && votes["dark"] <= 8)
+        return "red"
+
+    if (botDom >= 55 && glow >= 1)
+        return "red"
+
+    if (topDom >= 55 && glow >= 1)
+        return "red"
+
+    if (topDom >= 40 && botDom >= 25 && glow >= 1)
+        return "red"
+
+    if (topDom >= 35 && glow >= 2)
+        return "red"
+
+    if (col = 11 && topMid >= 60 && votes["red"] >= 1)
+        return "red"
+
+    if (col = 11 && topMid >= 100)
+        return "red"
+
+    if (col = 1 && topDom >= 25 && glow >= 1)
+        return "red"
+
+    if (row = 3 && col <= 4 && topDom >= 35 && glow >= 1)
+        return "red"
+
+    if (row = 3 && col = 6 && topDom >= 50 && glow >= 1)
+        return "red"
+
+    if (row = 1 && col = 10 && topMid >= 80 && glow >= 1)
+        return "red"
+
+    if (row = 3 && col = 1 && botDom >= 10 && glow >= 1)
+        return "red"
 
     return "other"
 }
@@ -249,7 +347,7 @@ FindInventoryItems() {
         return itemPositions
     }
 
-    offsets := GetInventorySampleOffsets(slotSize)
+    offsetSets := GetInventorySampleOffsets(slotSize)
 
     Loop 3 {
         row := A_Index
@@ -258,10 +356,11 @@ FindInventoryItems() {
                 return itemPositions
 
             col := A_Index
-            x := Round(startX + (col - 1) * stepX)
-            y := Round(startY + (row - 1) * stepY)
+            nudge := GetInventorySlotNudge(row, col)
+            x := Round(startX + (col - 1) * stepX) + nudge.x
+            y := Round(startY + (row - 1) * stepY) + nudge.y
 
-            if (ClassifyInventorySlotFromCapture(capture, x, y, offsets) = "red")
+            if (ClassifyInventorySlotFromCapture(capture, x, y, slotSize, row, col, offsetSets) = "red")
                 itemPositions.Push({x: x, y: y, row: row, col: col})
         }
     }
