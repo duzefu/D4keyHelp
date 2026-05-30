@@ -354,6 +354,7 @@ SaveUtilitySettings(file, prefix := "") {
     IniWrite(utilityControls.forceMove.key.Value, file, section, "ForceMoveKey")
     IniWrite(utilityControls.forceMove.enable.Value, file, section, "ForceMoveEnable")
     IniWrite(utilityControls.forceMove.interval.Value, file, section, "ForceMoveInterval")
+    IniWrite(utilityControls.upgradeYellow.enable.Value, file, section, "UpgradeYellowEnable")
 }
 
 /**
@@ -529,6 +530,8 @@ LoadUtilitySettings(file, prefix := "") {
         utilityControls.forceMove.key.Value := IniRead(file, section, "ForceMoveKey", "``")
         utilityControls.forceMove.enable.Value := IniRead(file, section, "ForceMoveEnable", 0)
         utilityControls.forceMove.interval.Value := IniRead(file, section, "ForceMoveInterval", 50)
+
+        utilityControls.upgradeYellow.enable.Value := IniRead(file, section, "UpgradeYellowEnable", 0)
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
     }

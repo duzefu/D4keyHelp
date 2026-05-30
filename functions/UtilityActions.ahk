@@ -222,7 +222,7 @@ ClassifyInventorySlotFromCapture(capture, centerX, centerY, stepX, stepY) {
  * 网格参数按 2K(2560x1440) 实测标定（取每格右下角品质色）：
  *   列：首格中心 x=1726.7，列间距 73.36（11 列）
  *   行：首行中心 y=1018，  行间距 108  （3 行，格子为长方形）
- * @param {String} targetQuality 目标品质：red(默认,传奇/暗金)、yellow、blue、any
+ * @param {String} targetQuality 目标品质：red(默认,传奇/暗金)、yellow、blue、redyellow(红+黄)、any
  */
 FindInventoryItems(targetQuality := "red") {
     global isAutoTransmuting
@@ -251,9 +251,12 @@ FindInventoryItems(targetQuality := "red") {
             y := Round(startY + (row - 1) * stepY)
 
             quality := ClassifyInventorySlotFromCapture(capture, x, y, stepX, stepY)
-            isTarget := (targetQuality = "any")
-                ? (quality = "red" || quality = "yellow" || quality = "blue")
-                : (quality = targetQuality)
+            if (targetQuality = "any")
+                isTarget := (quality = "red" || quality = "yellow" || quality = "blue")
+            else if (targetQuality = "redyellow")
+                isTarget := (quality = "red" || quality = "yellow")
+            else
+                isTarget := (quality = targetQuality)
 
             if (isTarget)
                 itemPositions.Push({x: x, y: y, row: row, col: col, quality: quality})
@@ -344,10 +347,92 @@ TransmuteInventoryItem(itemPos) {
 }
 
 /**
+ * 点击一个配方并执行「重塑/执行 → 接受」确认动作（黄装流程复用此套确认按钮）
+ * @param {Object} recipe - 配方按钮坐标 {x, y}
+ * @param {String} label - 日志标签
+ * @returns {Boolean} 正常完成返回true，被取消返回false
+ */
+TransmuteApplyRecipe(recipe, label) {
+    global isAutoTransmuting
+
+    if !isAutoTransmuting
+        return false
+
+    MouseMove recipe.x, recipe.y, 0
+    if !TransmuteInterruptibleSleep(80)
+        return false
+    Click "left"
+    DebugLog("自动嬗变：点击配方[" label "] x=" recipe.x " y=" recipe.y)
+    if !TransmuteInterruptibleSleep(180)
+        return false
+
+    reforgeButton := ScalePoint(0.168, 0.793)
+    MouseMove reforgeButton.x, reforgeButton.y, 0
+    if !TransmuteInterruptibleSleep(80)
+        return false
+    Click "left"
+    DebugLog("自动嬗变：点击重塑/执行按钮 x=" reforgeButton.x " y=" reforgeButton.y)
+    if !TransmuteInterruptibleSleep(450)
+        return false
+
+    acceptButton := ScalePoint(0.432, 0.560)
+    MouseMove acceptButton.x, acceptButton.y, 0
+    if !TransmuteInterruptibleSleep(80)
+        return false
+    Click "left"
+    DebugLog("自动嬗变：点击接受按钮 x=" acceptButton.x " y=" acceptButton.y)
+    return TransmuteInterruptibleSleep(1000)
+}
+
+/**
+ * 对单个黄装(稀有)执行「添加词缀 → 升级至传奇 → 嬗变/重塑」三步配方，最后清除
+ * 最终目标：黄装升为传奇(红)后再嬗变一次
+ * 三个配方均复用 重塑/执行(0.168,0.793) → 接受(0.432,0.560) 这套确认动作
+ * @param {Object} itemPos - 物品格坐标
+ * @returns {Boolean} 正常完成返回true，被取消返回false
+ */
+TransmuteYellowItem(itemPos) {
+    global isAutoTransmuting
+
+    if !isAutoTransmuting
+        return false
+
+    MouseMove itemPos.x, itemPos.y, 0
+    if !TransmuteInterruptibleSleep(80)
+        return false
+    Click "right"
+    DebugLog("自动嬗变(黄装)：右键物品 行=" itemPos.row " 列=" itemPos.col " x=" itemPos.x " y=" itemPos.y)
+    if !TransmuteInterruptibleSleep(250)
+        return false
+
+    ; 第一步：添加词缀（配方列表最上方）
+    if !TransmuteApplyRecipe(ScalePoint(0.445, 0.233), "添加词缀")
+        return false
+
+    ; 第二步：升级至传奇（配方列表最下方）→ 物品此时变为传奇(红)
+    if !TransmuteApplyRecipe(ScalePoint(0.445, 0.72), "升级至传奇")
+        return false
+
+    ; 第三步：嬗变/重塑（与红装流程相同的转化配方 0.445,0.380）
+    if !TransmuteApplyRecipe(ScalePoint(0.445, 0.350), "嬗变/重塑")
+        return false
+
+    ; 最后清除魔盒
+    clearButton := ScalePoint(0.168, 0.680)
+    MouseMove clearButton.x, clearButton.y, 0
+    if !TransmuteInterruptibleSleep(80)
+        return false
+    Click "left"
+    DebugLog("自动嬗变(黄装)：点击清除按钮 x=" clearButton.x " y=" clearButton.y)
+    return TransmuteInterruptibleSleep(350)
+}
+
+/**
  * 自动嬗变：扫描右下装备栏/背包33格，逐个右键物品、点击嬗变/配方、点击重塑、确认接受、等待1秒后清除
+ * 勾选「升级黄装」后，黄装(稀有)走「添加词缀 → 升级至传奇」流程，红装(传奇/暗金)仍走重塑流程
  */
 AutoTransmute(*) {
-    global isRunning, isPaused, isAutoTransmuting
+    global isRunning, isPaused, isAutoTransmuting, utilityControls
 
     if !WinActive("ahk_class Diablo IV Main Window Class")
         return
@@ -373,26 +458,38 @@ AutoTransmute(*) {
             DebugLog("自动嬗变：已暂停宏定时器")
         }
 
-        itemPositions := FindInventoryItems()
+        upgradeYellow := (utilityControls.HasProp("upgradeYellow")
+            && utilityControls.upgradeYellow.enable.Value = 1)
+        targetQuality := upgradeYellow ? "redyellow" : "red"
+
+        itemPositions := FindInventoryItems(targetQuality)
         if !isAutoTransmuting {
             cancelled := true
         } else {
             totalCount := itemPositions.Length
             if (totalCount = 0) {
-                UpdateStatus("未找到传奇物品", "自动嬗变：装备栏/背包没有识别到暗金/传奇装备")
-                DebugLog("自动嬗变：未找到传奇物品")
+                hint := upgradeYellow
+                    ? "自动嬗变：装备栏/背包没有识别到传奇/暗金或稀有装备"
+                    : "自动嬗变：装备栏/背包没有识别到暗金/传奇装备"
+                UpdateStatus("未找到目标物品", hint)
+                DebugLog("自动嬗变：未找到目标物品(品质=" targetQuality ")")
                 return
             }
 
-            DebugLog("自动嬗变：共识别到 " totalCount " 个传奇物品")
+            DebugLog("自动嬗变：共识别到 " totalCount " 个目标物品(品质=" targetQuality ")")
             for index, itemPos in itemPositions {
                 if !isAutoTransmuting {
                     cancelled := true
                     break
                 }
 
-                UpdateStatus("自动嬗变中", "正在处理第 " index "/" totalCount " 个物品（F3 取消）")
-                if TransmuteInventoryItem(itemPos)
+                qualityLabel := (itemPos.quality = "yellow") ? "黄装升传奇" : "红装重塑"
+                UpdateStatus("自动嬗变中", "正在处理第 " index "/" totalCount " 个物品[" qualityLabel "]（F3 取消）")
+
+                ok := (itemPos.quality = "yellow")
+                    ? TransmuteYellowItem(itemPos)
+                    : TransmuteInventoryItem(itemPos)
+                if ok
                     processedCount += 1
                 else {
                     cancelled := true

@@ -47,6 +47,7 @@ CreateExtraSettings() {
     myGui.AddText("x165 y550 w100 h22", "间隔 (ms)：")
     compassIntervalEdit := myGui.AddEdit("x270 y548 w90 Number", "65000")
     compassUpDown := myGui.AddUpDown("Range1000-600000", 65000)
+    upgradeYellowEnable := myGui.AddCheckbox("x382 y550 w98 h22", "升级黄装")
     myGui.AddButton("x480 y547 w120 h24", "自动嬗变 (F3)").OnEvent("Click", AutoTransmute)
 
     ; 存储控件引用
@@ -65,6 +66,9 @@ CreateExtraSettings() {
             key: forceMoveKey,
             enable: forceMoveEnable,
             interval: forceMoveIntervalEdit
+        },
+        upgradeYellow: {
+            enable: upgradeYellowEnable
         }
     }
 
@@ -105,4 +109,6 @@ CreateExtraSettings() {
     forceMoveKey.OnEvent("Change", ScheduleAutoSave)
     forceMoveEnable.OnEvent("Click", ScheduleAutoSave)
     forceMoveIntervalEdit.OnEvent("Change", ScheduleAutoSave)
+
+    upgradeYellowEnable.OnEvent("Click", ScheduleAutoSave)
 }
