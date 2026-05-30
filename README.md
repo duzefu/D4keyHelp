@@ -5,7 +5,9 @@ D4KeyHelp是一个有图形界面，可自定义配置的暗黑4鼠标宏工具�
 
 ![mainPage](mainPage.png)
 
-运行代码请使用最新版的AHK v2.0软件!并非常见的V1.3的版本,你也可以直接在release处下载.exe而不安装AHK.
+运行代码请使用最新版的AHK v2.0软件!并非常见的V1.3的版本,你也可以直接在 [Releases](https://github.com/duzefu/D4keyHelp/releases) 处下载 `D4keyHelp.exe` 而不安装 AHK。
+
+**自动发布**：推送形如 `v1.0.0` 的 git 标签后，GitHub Actions 会在 Windows 上编译 `macro_script_v3.ahk` 并上传 `D4keyHelp.exe` 到对应 Release（同时保留 workflow artifact 备份）。
 
 F1启动/暂停战斗宏
 
