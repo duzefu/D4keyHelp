@@ -1,0 +1,41 @@
+# Build D4keyHelp.exe from macro_script_v3.ahk when a version tag is pushed.
+# Requires windows-latest (Ahk2Exe is Windows-only).
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile with Ahk2Exe (AHK v2)
+        uses: benmusson/ahk2exe-action@v1
+        with:
+          in: .\macro_script_v3.ahk
+          out: .\dist\D4keyHelp.exe
+          target: x64
+          compression: none
+          ahk-tag: v2.0.26
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: D4keyHelp-${{ github.ref_name }}
+          path: dist/D4keyHelp.exe
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/D4keyHelp.exe
+          generate_release_notes: true
