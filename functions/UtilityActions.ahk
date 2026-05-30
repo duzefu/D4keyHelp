@@ -70,73 +70,50 @@ ScalePoint(xRatio, yRatio) {
 }
 
 /**
- * 按像素 RGB 快速分类：red / orange / yellow / pyellow / blue / dark / other
+ * 按像素 RGB 快速分类装备品质（只看右下角采样点）
+ * 颜色簇（2K 实测，取右下角小块平均值）：
+ *   红装(传奇/暗金) R≈120-130 G≈55-74 B≈20-30  → R≫G≫B
+ *   黄装(稀有)      R≈84-92  G≈63-68 B≈10      → R≈G，B 极低
+ *   蓝装(魔法)      R≈31-34  G≈44-50 B≈70-77   → B>G>R
+ *   空格/暗背景      各通道都低且接近
+ * @returns {String} red / yellow / blue / dark / other
  */
 ClassifyInventoryPixelFast(r, g, b) {
     brightness := Max(r, g, b)
     contrast := brightness - Min(r, g, b)
 
-    if (brightness <= 48 || (brightness <= 72 && contrast <= 24))
-        return "dark"
-
-    if (r >= 40 && g >= 22 && b <= 42 && r >= b + 10 && (r - g) >= -2 && (r - g) <= 30)
-        return "orange"
-
-    if (r >= 58 && g >= 55 && Abs(r - g) <= 10 && b <= 55)
-        return "pyellow"
-
-    if (b >= r && b >= g && (b - r) >= 6)
+    ; 蓝装（魔法）：蓝通道明显高于红/绿
+    if (b >= r + 15 && b >= g + 12 && b >= 55)
         return "blue"
 
-    if (r >= 50 && r >= g + 8 && r >= b + 18)
+    ; 空格 / 暗背景
+    if (brightness < 48 || (brightness < 60 && contrast < 20))
+        return "dark"
+
+    ; 红装（传奇/暗金）：红通道占绝对主导
+    if (r >= 100 && (r - g) >= 34 && r >= b + 40)
         return "red"
 
-    if (r >= 38 && g >= 28 && (r - g) < 18 && r > b && g > b)
+    ; 黄装（稀有）：红绿都较高且接近，蓝很低
+    if (r >= 58 && g >= 45 && b <= 40 && (r - g) <= 34 && r >= b + 25)
         return "yellow"
 
     return "other"
 }
 
 /**
- * 边缘列/行采样微调，避免贴边格子采到 UI 外区域
+ * 装备格右下角采样偏移（品质色边框在此处最稳定）
+ * 格子为长方形（约 73 宽 x 108 高），X/Y 采用不同比例
  */
-GetInventorySlotNudge(row, col) {
-    if (col = 11)
-        return {x: -8, y: -4}
-    if (col = 1 && row <= 2)
-        return {x: -2, y: -4}
-    if (col = 1 && row = 3)
-        return {x: 0, y: -10}
-    return {x: 0, y: 0}
+GetInventoryBottomRightOffset(stepX, stepY) {
+    return {x: Round(stepX * 0.36), y: Round(stepY * 0.39)}
 }
 
 /**
- * 获取单格采样偏移：边框 10 点 + 内部 5 点（仍是一次 BitBlt 内存读色）
+ * 右下角采样小块半径（取 7x7 平均，抗物品图标/网格线干扰）
  */
-GetInventorySampleOffsets(slotSize) {
-    borderRadius := Max(4, Round(slotSize * 0.46))
-    innerRadius := Max(2, Round(slotSize * 0.12))
-    return {
-        border: [
-            {x: -borderRadius, y: -borderRadius},
-            {x: borderRadius, y: -borderRadius},
-            {x: -borderRadius, y: borderRadius},
-            {x: borderRadius, y: borderRadius},
-            {x: 0, y: -borderRadius},
-            {x: 0, y: borderRadius},
-            {x: -borderRadius, y: 0},
-            {x: borderRadius, y: 0},
-            {x: -Round(borderRadius / 2), y: -Round(borderRadius / 2)},
-            {x: Round(borderRadius / 2), y: Round(borderRadius / 2)}
-        ],
-        inner: [
-            {x: 0, y: 0},
-            {x: 0, y: -innerRadius},
-            {x: 0, y: innerRadius},
-            {x: -innerRadius, y: 0},
-            {x: innerRadius, y: 0}
-        ]
-    }
+GetInventorySampleRadius() {
+    return 3
 }
 
 /**
@@ -157,16 +134,48 @@ ReadCapturedPixel(capture, screenX, screenY) {
 }
 
 /**
+ * 从内存位图读取以 (screenX, screenY) 为中心、半径 radius 的小块平均 RGB
+ * 单像素易被物品图标或网格线干扰，小块平均显著提升识别稳定性
+ */
+ReadCapturedPatchAvg(capture, screenX, screenY, radius) {
+    sumR := 0, sumG := 0, sumB := 0, count := 0
+
+    Loop (2 * radius + 1) {
+        dy := A_Index - 1 - radius
+        localY := screenY + dy - capture.originY
+        if (localY < 0 || localY >= capture.height)
+            continue
+
+        Loop (2 * radius + 1) {
+            dx := A_Index - 1 - radius
+            localX := screenX + dx - capture.originX
+            if (localX < 0 || localX >= capture.width)
+                continue
+
+            offset := localY * capture.stride + localX * 3
+            sumB += NumGet(capture.bits, offset, "UChar")
+            sumG += NumGet(capture.bits, offset + 1, "UChar")
+            sumR += NumGet(capture.bits, offset + 2, "UChar")
+            count += 1
+        }
+    }
+
+    if (count = 0)
+        return {r: 0, g: 0, b: 0}
+
+    return {r: sumR // count, g: sumG // count, b: sumB // count}
+}
+
+/**
  * 一次性截取装备栏区域（11x3 格），避免逐点 PixelGetColor
  */
-CaptureInventoryGridBitmap(startX, startY, stepX, stepY, slotSize) {
-    borderRadius := Max(4, Round(slotSize * 0.46))
-    edgeRadius := Max(4, slotSize // 2)
-    sampleRadius := Max(borderRadius, edgeRadius) + 10
-    originX := Round(startX) - sampleRadius
-    originY := Round(startY) - sampleRadius
-    endX := Round(startX + 10 * stepX) + sampleRadius
-    endY := Round(startY + 2 * stepY) + sampleRadius
+CaptureInventoryGridBitmap(startX, startY, stepX, stepY) {
+    offset := GetInventoryBottomRightOffset(stepX, stepY)
+    margin := GetInventorySampleRadius() + 4
+    originX := Round(startX) - margin
+    originY := Round(startY) - margin
+    endX := Round(startX + 10 * stepX + offset.x) + margin
+    endY := Round(startY + 2 * stepY + offset.y) + margin
     width := endX - originX + 1
     height := endY - originY + 1
 
@@ -198,156 +207,38 @@ CaptureInventoryGridBitmap(startX, startY, stepX, stepY, slotSize) {
 }
 
 /**
- * 读取边框红/橙 dominance（R - max(G,B)）
+ * 从已截取的位图判断格子品质（仅取右下角小块平均）
+ * @returns {String} red=传奇/暗金 yellow=稀有 blue=魔法 dark=空格 other=未知
  */
-InventoryEdgeDominance(capture, centerX, centerY, slotSize, edgeY) {
-    edgeRadius := Max(4, slotSize // 2 - 1)
-    maxDominance := -999
-    for _, offsetX in [-edgeRadius, 0, edgeRadius] {
-        rgb := ReadCapturedPixel(capture, centerX + offsetX, centerY + edgeY)
-        brightness := Max(rgb.r, rgb.g, rgb.b)
-        if (brightness <= 48)
-            continue
-        dominance := rgb.r - Max(rgb.g, rgb.b)
-        if (dominance > maxDominance)
-            maxDominance := dominance
-    }
-    return maxDominance
-}
-
-/**
- * 从已截取的位图判断格子是否为传奇（orange/red 边框光效）
- */
-ClassifyInventorySlotFromCapture(capture, centerX, centerY, slotSize, row, col, offsetSets) {
-    votes := Map("red", 0, "orange", 0, "yellow", 0, "pyellow", 0, "blue", 0, "other", 0, "dark", 0)
-    innerDark := 0
-    innerMean := 0
-    innerCount := 0
-    edgeRadius := Max(4, slotSize // 2 - 1)
-    innerGridRadius := Max(2, slotSize // 6)
-
-    for _, offset in offsetSets.border {
-        rgb := ReadCapturedPixel(capture, centerX + offset.x, centerY + offset.y)
-        votes[ClassifyInventoryPixelFast(rgb.r, rgb.g, rgb.b)] += 1
-    }
-
-    for _, offset in offsetSets.inner {
-        rgb := ReadCapturedPixel(capture, centerX + offset.x, centerY + offset.y)
-        if (ClassifyInventoryPixelFast(rgb.r, rgb.g, rgb.b) = "dark")
-            innerDark += 1
-    }
-
-    Loop (2 * innerGridRadius + 1) {
-        offsetY := A_Index - innerGridRadius - 1
-        Loop (2 * innerGridRadius + 1) {
-            offsetX := A_Index - innerGridRadius - 1
-            rgb := ReadCapturedPixel(capture, centerX + offsetX, centerY + offsetY)
-            innerMean += Max(rgb.r, rgb.g, rgb.b)
-            innerCount += 1
-        }
-    }
-    innerMean := innerCount > 0 ? innerMean / innerCount : 0
-
-    topRgb := ReadCapturedPixel(capture, centerX, centerY - edgeRadius)
-    topMid := Max(topRgb.r, topRgb.g, topRgb.b)
-    topDom := InventoryEdgeDominance(capture, centerX, centerY, slotSize, -edgeRadius)
-    botDom := InventoryEdgeDominance(capture, centerX, centerY, slotSize, edgeRadius)
-    glow := votes["orange"] + votes["red"]
-    yellowVotes := votes["yellow"] + votes["pyellow"]
-
-    if (innerDark >= 5 && glow <= 1 && !(col = 11 && topMid >= 60))
-        return "other"
-
-    if (innerDark >= 4 && glow = 0 && !(col = 11 && topMid >= 100))
-        return "other"
-
-    if (row = 3 && col >= 8 && col < 11 && topMid < 75 && innerMean > 60)
-        return "other"
-
-    if (row = 3 && col = 11 && (innerMean < 55 || (innerDark >= 4 && glow <= 1)))
-        return "other"
-
-    if (innerMean <= 36 && innerDark >= 4 && !(col = 11 && topMid >= 60))
-        return "other"
-
-    if (row = 2 && col = 7 && innerDark <= 2 && glow >= 3 && innerMean >= 58)
-        return "other"
-
-    if (topDom >= 35 && botDom < 25 && innerMean < 39)
-        return "other"
-
-    if (yellowVotes >= 4 && glow <= 4)
-        return "other"
-
-    if (votes["dark"] >= 9 && glow <= 1)
-        return "other"
-
-    if (glow >= 3 && votes["orange"] >= 1)
-        return "red"
-
-    if (votes["red"] >= 3)
-        return "red"
-
-    if (glow >= 2 && yellowVotes <= 2 && votes["dark"] <= 8)
-        return "red"
-
-    if (botDom >= 55 && glow >= 1)
-        return "red"
-
-    if (topDom >= 55 && glow >= 1)
-        return "red"
-
-    if (topDom >= 40 && botDom >= 25 && glow >= 1)
-        return "red"
-
-    if (topDom >= 35 && glow >= 2)
-        return "red"
-
-    if (col = 11 && topMid >= 60 && votes["red"] >= 1)
-        return "red"
-
-    if (col = 11 && topMid >= 100)
-        return "red"
-
-    if (col = 1 && topDom >= 25 && glow >= 1)
-        return "red"
-
-    if (row = 3 && col <= 4 && topDom >= 35 && glow >= 1)
-        return "red"
-
-    if (row = 3 && col = 6 && topDom >= 50 && glow >= 1)
-        return "red"
-
-    if (row = 1 && col = 10 && topMid >= 80 && glow >= 1)
-        return "red"
-
-    if (row = 3 && col = 1 && botDom >= 10 && glow >= 1)
-        return "red"
-
-    return "other"
+ClassifyInventorySlotFromCapture(capture, centerX, centerY, stepX, stepY) {
+    offset := GetInventoryBottomRightOffset(stepX, stepY)
+    rgb := ReadCapturedPatchAvg(capture, centerX + offset.x, centerY + offset.y, GetInventorySampleRadius())
+    return ClassifyInventoryPixelFast(rgb.r, rgb.g, rgb.b)
 }
 
 /**
  * 查找右下装备栏/背包 11列x3行中的传奇物品（单次截图 + 内存取色，目标 <2s）
+ *
+ * 网格参数按 2K(2560x1440) 实测标定（取每格右下角品质色）：
+ *   列：首格中心 x=1726.7，列间距 73.36（11 列）
+ *   行：首行中心 y=1018，  行间距 108  （3 行，格子为长方形）
+ * @param {String} targetQuality 目标品质：red(默认,传奇/暗金)、yellow、blue、any
  */
-FindInventoryItems() {
+FindInventoryItems(targetQuality := "red") {
     global isAutoTransmuting
 
     itemPositions := []
-    slotSize := Round(A_ScreenWidth * 0.030)
-    startX := A_ScreenWidth * 0.676
-    startY := A_ScreenHeight * 0.704
-    stepX := A_ScreenWidth * 0.0305
-    stepY := A_ScreenHeight * 0.061
+    startX := A_ScreenWidth * 0.674484
+    startY := A_ScreenHeight * 0.706944
+    stepX := A_ScreenWidth * 0.0286563
+    stepY := A_ScreenHeight * 0.075
     scanStart := A_TickCount
 
-    capture := CaptureInventoryGridBitmap(startX, startY, stepX, stepY, slotSize)
+    capture := CaptureInventoryGridBitmap(startX, startY, stepX, stepY)
     if !capture.ok {
         DebugLog("自动嬗变：装备栏区域截图失败")
         return itemPositions
     }
-
-    offsetSets := GetInventorySampleOffsets(slotSize)
 
     Loop 3 {
         row := A_Index
@@ -356,17 +247,21 @@ FindInventoryItems() {
                 return itemPositions
 
             col := A_Index
-            nudge := GetInventorySlotNudge(row, col)
-            x := Round(startX + (col - 1) * stepX) + nudge.x
-            y := Round(startY + (row - 1) * stepY) + nudge.y
+            x := Round(startX + (col - 1) * stepX)
+            y := Round(startY + (row - 1) * stepY)
 
-            if (ClassifyInventorySlotFromCapture(capture, x, y, slotSize, row, col, offsetSets) = "red")
-                itemPositions.Push({x: x, y: y, row: row, col: col})
+            quality := ClassifyInventorySlotFromCapture(capture, x, y, stepX, stepY)
+            isTarget := (targetQuality = "any")
+                ? (quality = "red" || quality = "yellow" || quality = "blue")
+                : (quality = targetQuality)
+
+            if (isTarget)
+                itemPositions.Push({x: x, y: y, row: row, col: col, quality: quality})
         }
     }
 
     DebugLog("自动嬗变：扫描完成，耗时 " (A_TickCount - scanStart) "ms，找到 "
-        itemPositions.Length " 个传奇物品")
+        itemPositions.Length " 个目标物品(品质=" targetQuality ")")
     return itemPositions
 }
 
