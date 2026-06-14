@@ -52,6 +52,7 @@ SaveSettings(*) {
 
         ; 保存预设元信息
         SavePresetMeta(settingsFile)
+        SaveHotkeySettings(settingsFile)
 
         ; 保存各类设置（带预设前缀）
         SaveSkillSettings(settingsFile, prefix)
@@ -82,6 +83,17 @@ SavePresetMeta(file) {
 }
 
 /**
+ * 保存全局热键设置（不随预设切换）
+ * @param {String} file - 设置文件路径
+ */
+SaveHotkeySettings(file) {
+    global startStopHotkey
+
+    IniWrite(startStopHotkey, file, "Hotkeys", "StartStop")
+    DebugLog("启停热键已保存: " . startStopHotkey)
+}
+
+/**
  * 加载预设元信息
  * @param {String} file - 设置文件路径
  * @returns {Boolean} 是否成功加载（false表示旧格式需要迁移）
@@ -108,6 +120,27 @@ LoadPresetMeta(file) {
     } catch as err {
         DebugLog("加载预设元信息出错: " err.Message)
         return false
+    }
+}
+
+/**
+ * 加载全局热键设置（不随预设切换）
+ * @param {String} file - 设置文件路径
+ */
+LoadHotkeySettings(file) {
+    global startStopHotkey
+
+    try {
+        configuredHotkey := IniRead(file, "Hotkeys", "StartStop", startStopHotkey)
+        configuredHotkey := NormalizeStartStopHotkey(configuredHotkey)
+        if (!IsForbiddenStartStopHotkey(configuredHotkey))
+            startStopHotkey := configuredHotkey
+        else
+            DebugLog("启停热键配置无效，使用默认值: " . startStopHotkey)
+
+        DebugLog("启停热键已加载: " . startStopHotkey)
+    } catch as err {
+        DebugLog("加载启停热键设置出错: " err.Message)
     }
 }
 
@@ -388,6 +421,8 @@ LoadSettings() {
             ; 旧格式，执行迁移
             MigrateOldSettings(settingsFile)
         }
+
+        LoadHotkeySettings(settingsFile)
 
         ; 更新预设Tab显示
         UpdatePresetTabs()

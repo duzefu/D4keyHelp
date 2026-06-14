@@ -51,6 +51,15 @@ global timerStates := Map()            ; 用于跟踪定时器状态
 
 ; Hold模式按键状态（在PressSkill/CheckHoldKey/ResetAllHoldKeyStates之间共享）
 global holdKeyStates := Map()
+global mouseHoldStates := Map("left", false, "right", false)
+
+; 全局热键设置（不随预设切换）
+global startStopHotkey := "F1"
+global startStopHotkeyCtrl := ""
+global startStopMouseCtrl := ""
+global startStopButton := ""
+global hotkeyChangeInProgress := false
+global registeredStartStopHotkey := ""
 
 ; 控件变量
 global mouseAutoMove := {}        ; 鼠标自动移动控件
