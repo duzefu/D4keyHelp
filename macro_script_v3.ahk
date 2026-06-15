@@ -17,6 +17,7 @@ ProcessSetPriority "High"
 #Include "core/WindowManager.ahk"
 #Include "core/TimerManager.ahk"
 #Include "core/MacroControl.ahk"
+#Include "core/HotkeyManager.ahk"
 
 ; GUI模块
 #Include "gui/MainGUI.ahk"

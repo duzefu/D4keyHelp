@@ -1,7 +1,6 @@
 ; ========== 热键设置 ==========
 #HotIf WinActive("ahk_class Diablo IV Main Window Class")
 
-*F1::ToggleMacro()  ; * 表示忽略所有修饰键
 #MaxThreadsPerHotkey 2
 *F3::AutoTransmute()
 #MaxThreadsPerHotkey 1

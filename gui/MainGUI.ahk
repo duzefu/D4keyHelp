@@ -4,9 +4,10 @@
  */
 CreateMainGUI() {
     global myGui, statusText, statusBar, presetTab, presetNames, currentPreset
+    global startStopHotkeyCtrl, startStopMouseCtrl, startStopButton
 
     ; 创建主窗口
-    myGui := Gui("", "暗黑4助手 v2.1")
+    myGui := Gui("", "暗黑4助手 v2.1.1")
     myGui.BackColor := "F5F7FA"
     myGui.SetFont("s10", "Segoe UI")
     myGui.MarginX := 8
@@ -46,16 +47,25 @@ CreateMainGUI() {
 
     ; ========== 底部状态和控制区域 ==========
     myGui.SetFont("s11 bold c10B981", "Segoe UI")
-    statusText := myGui.AddText("x25 y593 w260 h26 BackgroundTrans", "● 状态: 未运行")
+    statusText := myGui.AddText("x25 y593 w190 h26 BackgroundTrans", "● 状态: 未运行")
     statusText.SetFont("c6B7280")  ; 初始未运行=灰
 
+    myGui.SetFont("s9 norm c1F2937", "Segoe UI")
+    myGui.AddText("x220 y596 w50 h22 right", "启停：")
+    startStopHotkeyCtrl := myGui.AddHotkey("x275 y591 w70", "F1")
+    startStopMouseCtrl := myGui.AddDropDownList("x350 y591 w85 Choose1", ["键盘", "中键", "侧键1", "侧键2"])
+
     myGui.SetFont("s11 bold", "Segoe UI")
-    myGui.AddButton("x340 y588 w140 h34 Default", "开始 / 停止  (F1)").OnEvent("Click", ToggleMacro)
+    startStopButton := myGui.AddButton("x445 y588 w140 h34 Default", "开始 / 停止  (F1)")
+    startStopButton.OnEvent("Click", ToggleMacro)
     myGui.SetFont("s10 norm")
-    myGui.AddButton("x495 y588 w100 h34", "保存设置").OnEvent("Click", SaveSettings)
+    myGui.AddButton("x595 y588 w95 h34", "保存设置").OnEvent("Click", SaveSettings)
+
+    startStopHotkeyCtrl.OnEvent("Change", OnStartStopKeyboardChanged)
+    startStopMouseCtrl.OnEvent("Change", OnStartStopMouseChanged)
 
     myGui.SetFont("s9 c6B7280", "Segoe UI")
-    myGui.AddText("x25 y630 w680 h20 BackgroundTrans", "提示：F1 启停宏 | F3 自动嬗变/取消（魔盒界面）| Tab 查看地图暂停 | 仅暗黑4窗口生效")
+    myGui.AddText("x25 y630 w680 h20 BackgroundTrans", "提示：启停键可配置 | F3 自动嬗变/取消（魔盒界面）| Tab 查看地图暂停 | 仅暗黑4窗口生效")
 }
 
 /**
@@ -72,6 +82,7 @@ InitializeGUI() {
 
     ; 先加载设置（在Show之前，避免Tab2内的DropDownList渲染不刷新）
     LoadSettings()
+    RegisterStartStopHotkey()
 
     ; 显示GUI（此时下拉框值已正确设置，首次渲染即为正确状态）
     myGui.Show("w720 h680")

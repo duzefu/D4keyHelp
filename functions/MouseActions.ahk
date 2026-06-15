@@ -53,6 +53,7 @@ ClickWithShift(button := "") {
  */
 PressLeftClick() {
     global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD
+    global mouseHoldStates
 
     if (!isRunning || isPaused || mouseControls.left.strategy.Value <= 1)
         return
@@ -60,14 +61,12 @@ PressLeftClick() {
     mouseMode := mouseControls.left.strategy.Value - 1
 
     if (mouseMode = SKILL_MODE_HOLD) {
-        static leftMouseHeld := false
-
-        if (!leftMouseHeld) {
+        if (!mouseHoldStates["left"]) {
             if (shiftEnabled)
                 Send "{Shift down}"
 
             Click "down left"
-            leftMouseHeld := true
+            mouseHoldStates["left"] := true
             DebugLog("按住鼠标左键")
         }
     } else {
@@ -81,6 +80,7 @@ PressLeftClick() {
  */
 PressRightClick() {
     global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD
+    global mouseHoldStates
 
     if (!isRunning || isPaused || mouseControls.right.strategy.Value <= 1)
         return
@@ -88,14 +88,12 @@ PressRightClick() {
     mouseMode := mouseControls.right.strategy.Value - 1
 
     if (mouseMode = SKILL_MODE_HOLD) {
-        static rightMouseHeld := false
-
-        if (!rightMouseHeld) {
+        if (!mouseHoldStates["right"]) {
             if (shiftEnabled)
                 Send "{Shift down}"
 
             Click "down right"
-            rightMouseHeld := true
+            mouseHoldStates["right"] := true
             DebugLog("按住鼠标右键")
         }
     } else {
@@ -108,20 +106,21 @@ PressRightClick() {
  * 重置鼠标按键状态
  */
 ResetMouseButtonStates() {
-    static leftMouseHeld := false
-    static rightMouseHeld := false
+    global mouseHoldStates
 
-    if (leftMouseHeld) {
+    if (mouseHoldStates["left"]) {
         Click "up left"
-        leftMouseHeld := false
+        mouseHoldStates["left"] := false
         DebugLog("释放鼠标左键")
     }
 
-    if (rightMouseHeld) {
+    if (mouseHoldStates["right"]) {
         Click "up right"
-        rightMouseHeld := false
+        mouseHoldStates["right"] := false
         DebugLog("释放鼠标右键")
     }
+
+    Send "{Shift up}"
 }
 
 /**
