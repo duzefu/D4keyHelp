@@ -3,7 +3,11 @@
 
 D4KeyHelp是一个有图形界面，可自定义配置的暗黑4鼠标宏工具。
 
-![mainPage](mainPage.png)
+| 浅色模式 | 深色模式 |
+| :---: | :---: |
+| ![mainPage](mainPage.png) | ![mainPage-dark](mainPage-dark.png) |
+
+界面右上角可切换浅色/深色模式，运行中开始按钮会变为红色的“停止”。
 
 运行代码请使用最新版的AHK v2.0软件!并非常见的V1.3的版本,你也可以直接在 [Releases](https://github.com/duzefu/D4keyHelp/releases) 处下载 `D4keyHelp.exe` 而不安装 AHK。
 
