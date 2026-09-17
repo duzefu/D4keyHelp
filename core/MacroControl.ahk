@@ -47,6 +47,7 @@ ToggleMacro(*) {
         ReleaseAllKeys()
     }
 
+    UpdateStartStopButton()
     DebugLog("宏状态切换: " . (isRunning ? "运行" : "停止"))
 }
 

@@ -63,16 +63,7 @@ UpdateStartStopHotkeyUi() {
                 startStopMouseCtrl.Choose(1)
         }
 
-        if (startStopButton != "") {
-            buttonText := "开始 / 停止  (" . GetStartStopHotkeyDisplay() . ")"
-            try {
-                startStopButton.Text := buttonText
-            } catch {
-                try {
-                    startStopButton.Value := buttonText
-                }
-            }
-        }
+        UpdateStartStopButton()
     } finally {
         hotkeyChangeInProgress := false
     }

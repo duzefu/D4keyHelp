@@ -50,7 +50,7 @@ UpdateStatus(status, barText) {
     else if (InStr(status, "暂停"))
         color := "F59E0B"
     else
-        color := "6B7280"
+        color := MUI_Hex(MUI_T.muted)
     statusText.SetFont("c" color)
     statusBar.Text := barText
     DebugLog("状态更新: " status " | " barText)

@@ -20,6 +20,7 @@ ProcessSetPriority "High"
 #Include "core/HotkeyManager.ahk"
 
 ; GUI模块
+#Include "gui/ModernUI.ahk"
 #Include "gui/MainGUI.ahk"
 #Include "gui/SkillControls.ahk"
 #Include "gui/MouseControls.ahk"

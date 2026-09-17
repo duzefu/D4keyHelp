@@ -13,11 +13,11 @@ CreateSkillRows() {
     defaultKeys := ["1", "2", "3", "4", "LButton", "RButton"]
 
     Loop 6 {
-        yPos := 100 + (A_Index - 1) * 38
+        yPos := 134 + (A_Index - 1) * 38
         row := A_Index
 
         ; 行标签
-        myGui.AddText("x25 y" (yPos + 4) " w95 right", skillLabels[row])
+        myGui.AddText("x25 y" (yPos + 4) " w95 right" MUI_CardBg, skillLabels[row])
 
         ; 快捷键（技能1-4用Hotkey，左右键用禁用的Edit）
         if (row <= 4) {
@@ -38,7 +38,7 @@ CreateSkillRows() {
         delayUpDown := myGui.AddUpDown("Range-30000-30000", 10)
 
         ; 延迟随机复选框
-        randomCheck := myGui.AddCheckbox("x575 y" (yPos + 4) " Checked", "")
+        randomCheck := myGui.AddCheckbox("x575 y" (yPos + 4) " Checked" MUI_CardBg, "")
 
         ; 构造行数据对象
         rowData := {
