@@ -49,6 +49,7 @@ CreateExtraSettings() {
     compassUpDown := myGui.AddUpDown("Range1000-600000", 65000)
     upgradeYellowEnable := myGui.AddCheckbox("x382 y550 w98 h22", "升级黄装")
     myGui.AddButton("x480 y547 w120 h24", "自动嬗变 (F3)").OnEvent("Click", AutoTransmute)
+    myGui.AddButton("x604 y547 w24 h24", "?").OnEvent("Click", OpenTransmuteHelp)
 
     ; 存储控件引用
     utilityControls := {
@@ -111,4 +112,11 @@ CreateExtraSettings() {
     forceMoveIntervalEdit.OnEvent("Change", ScheduleAutoSave)
 
     upgradeYellowEnable.OnEvent("Click", ScheduleAutoSave)
+}
+
+/**
+ * 打开GitHub README查看自动嬗变说明
+ */
+OpenTransmuteHelp(*) {
+    Run "https://github.com/duzefu/D4keyHelp#readme"
 }
