@@ -16,7 +16,7 @@ CreateMainGUI() {
     faint := "c" MUI_Hex(MUI_T.faint)
 
     ; 创建主窗口
-    myGui := Gui("", "暗黑4助手 v2.1.1")
+    myGui := Gui("", "暗黑4助手 v2.3")
     myGui.BackColor := MUI_Hex(MUI_T.window)
     myGui.SetFont("s10 " text, MUI_FontName)
     myGui.MarginX := 12
