@@ -23,17 +23,8 @@ PressSkill(skillNum) {
     ; 根据不同模式处理
     if (skillMode = SKILL_MODE_BUFF) {
         ; 维持BUFF模式 - 检查技能是否已激活
-        try {
-            if (skillPositions.Has(skillNum)) {
-                pos := skillPositions[skillNum]
-                if (IsSkillActive(pos.x, pos.y)) {
-                    DebugLog("技能" skillNum "已激活，跳过")
-                    return
-                }
-            }
-        } catch as err {
-            DebugLog("检测技能状态出错: " err.Message)
-        }
+        if ShouldSkipBuffPress(skillNum)
+            return
 
         ; 发送按键
         SendKey(key)
@@ -58,6 +49,30 @@ PressSkill(skillNum) {
         SendKey(key)
         DebugLog("按下技能" skillNum " 键(连点模式): " key)
     }
+}
+
+/**
+ * 维持BUFF模式：判断本次是否应跳过按键
+ * 绿条存在（BUFF生效中）时跳过；按键频率由该槽位设置的间隔控制
+ * @param {Integer|String} slot - 技能槽（1-4 / "left" / "right"）
+ * @returns {Boolean} - true表示跳过
+ */
+ShouldSkipBuffPress(slot) {
+    global skillPositions
+
+    try {
+        if (skillPositions.Has(slot)) {
+            pos := skillPositions[slot]
+            if (IsSkillActive(pos.x, pos.y)) {
+                DebugLog("技能" slot "已激活，跳过")
+                return true
+            }
+        }
+    } catch as err {
+        DebugLog("检测技能状态出错: " err.Message)
+    }
+
+    return false
 }
 
 /**

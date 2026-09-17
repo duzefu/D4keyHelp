@@ -52,7 +52,7 @@ ClickWithShift(button := "") {
  * 鼠标左键点击
  */
 PressLeftClick() {
-    global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD
+    global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD, SKILL_MODE_BUFF
     global mouseHoldStates
 
     if (!isRunning || isPaused || mouseControls.left.strategy.Value <= 1)
@@ -60,7 +60,12 @@ PressLeftClick() {
 
     mouseMode := mouseControls.left.strategy.Value - 1
 
-    if (mouseMode = SKILL_MODE_HOLD) {
+    if (mouseMode = SKILL_MODE_BUFF) {
+        if ShouldSkipBuffPress("left")
+            return
+        ClickWithShift()
+        DebugLog("点击鼠标左键(维持BUFF模式)")
+    } else if (mouseMode = SKILL_MODE_HOLD) {
         if (!mouseHoldStates["left"]) {
             if (shiftEnabled)
                 Send "{Shift down}"
@@ -79,7 +84,7 @@ PressLeftClick() {
  * 鼠标右键点击
  */
 PressRightClick() {
-    global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD
+    global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD, SKILL_MODE_BUFF
     global mouseHoldStates
 
     if (!isRunning || isPaused || mouseControls.right.strategy.Value <= 1)
@@ -87,7 +92,12 @@ PressRightClick() {
 
     mouseMode := mouseControls.right.strategy.Value - 1
 
-    if (mouseMode = SKILL_MODE_HOLD) {
+    if (mouseMode = SKILL_MODE_BUFF) {
+        if ShouldSkipBuffPress("right")
+            return
+        ClickWithShift("right")
+        DebugLog("点击鼠标右键(维持BUFF模式)")
+    } else if (mouseMode = SKILL_MODE_HOLD) {
         if (!mouseHoldStates["right"]) {
             if (shiftEnabled)
                 Send "{Shift down}"
