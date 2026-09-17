@@ -225,6 +225,7 @@ SwitchPreset(targetIndex) {
         LoadMouseSettings(settingsFile, prefix)
         LoadUtilitySettings(settingsFile, prefix)
         LoadCompassSettings(settingsFile, prefix)
+        StripThousandsSeparators()
 
         statusBar.Text := "已切换到: " . presetNames[currentPreset]
         DebugLog("已切换到预设" . currentPreset . ": " . presetNames[currentPreset])
@@ -433,6 +434,7 @@ LoadSettings() {
         LoadMouseSettings(settingsFile, prefix)
         LoadUtilitySettings(settingsFile, prefix)
         LoadCompassSettings(settingsFile, prefix)
+        StripThousandsSeparators()
 
         DebugLog("所有设置已从文件加载: " settingsFile " [预设" . currentPreset . ": " . presetNames[currentPreset] . "]")
     } catch as err {
@@ -462,6 +464,24 @@ ReadStrategyValue(file, section, keyPrefix, label) {
     strategy := enabled ? (mode + 1) : 1  ; 禁用=1，否则mode 1->2, 2->3, 3->4
     DebugLog(label "从旧格式转换: Enable=" enabled ", Mode=" mode " -> Strategy=" strategy)
     return strategy
+}
+
+/**
+ * 将输入框数值转为整数，兼容旧版UpDown插入的千位分隔符（如 "1,000"）
+ */
+ToInt(value) {
+    return Integer(StrReplace(value, ","))
+}
+
+/**
+ * 去掉所有输入框数值中的千位分隔符，修正旧设置文件中保存的 "1,000" 这类值
+ */
+StripThousandsSeparators() {
+    global myGui
+    for ctrl in myGui {
+        if (ctrl.Type = "Edit" && RegExMatch(ctrl.Value, "^-?\d{1,3}(,\d{3})+$"))
+            ctrl.Value := StrReplace(ctrl.Value, ",")
+    }
 }
 
 /**

@@ -76,7 +76,7 @@ ApplyTimerToggle(stateKey, control, timerFunc, enabled, label) {
         return
 
     if (enabled) {
-        interval := Integer(control.interval.Value)
+        interval := ToInt(control.interval.Value)
         if (interval > 0) {
             SetTimer(timerFunc, interval)
             timerStates[stateKey] := true

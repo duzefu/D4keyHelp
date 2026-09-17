@@ -31,11 +31,11 @@ CreateSkillRows() {
 
         ; 执行间隔（Edit + UpDown）
         intervalEdit := myGui.AddEdit("x325 y" yPos " w115 Number", "300")
-        intervalUpDown := myGui.AddUpDown("Range20-60000", 300)
+        intervalUpDown := myGui.AddUpDown("0x80 Range20-60000", 300)
 
         ; 延迟（Edit + UpDown）
         delayEdit := myGui.AddEdit("x455 y" yPos " w85", "10")
-        delayUpDown := myGui.AddUpDown("Range-30000-30000", 10)
+        delayUpDown := myGui.AddUpDown("0x80 Range-30000-30000", 10)
 
         ; 延迟随机复选框
         randomCheck := myGui.AddCheckbox("x575 y" (yPos + 4) " Checked" MUI_CardBg, "")

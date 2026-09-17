@@ -31,8 +31,8 @@ CalcStrategyInterval(control) {
     if (control.strategy.Value <= 1)
         return 0
 
-    interval := Integer(control.interval.Value)
-    delay := Integer(control.delay.Value)
+    interval := ToInt(control.interval.Value)
+    delay := ToInt(control.delay.Value)
     isRandom := control.random.Value
 
     if (delay != 0) {
@@ -87,7 +87,7 @@ StartMouseAutoMoveTimer() {
     DebugLog("鼠标自动移动状态: " . (mouseAutoMoveEnabled ? "启用" : "禁用") . ", GUI勾选状态: " . mouseAutoMove.enable.Value)
 
     if (mouseAutoMoveEnabled) {
-        interval := Integer(mouseAutoMove.interval.Value)
+        interval := ToInt(mouseAutoMove.interval.Value)
         if (interval > 0) {
             SetTimer(MoveMouseToNextPoint, interval)
             timerStates["mouseAutoMove"] := true
@@ -105,7 +105,7 @@ StartCompassTimer() {
     DebugLog("罗盘专用状态: " . (compassEnabled ? "启用" : "禁用") . ", GUI勾选状态: " . compassControl.enable.Value)
 
     if (compassEnabled) {
-        interval := Integer(compassControl.interval.Value)
+        interval := ToInt(compassControl.interval.Value)
         if (interval > 0) {
             SetTimer(CompassClick, interval)
             timerStates["compass"] := true
@@ -124,7 +124,7 @@ StartSingleTimer(name, control, timerFunc) {
     global timerStates
 
     if (control.enable.Value = 1) {
-        interval := Integer(control.interval.Value)
+        interval := ToInt(control.interval.Value)
         if (interval > 0) {
             SetTimer(timerFunc, interval)
             timerStates[name] := true

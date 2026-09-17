@@ -53,7 +53,7 @@ RButton::{
         DebugLog("检测到鼠标点击，临时暂停宏")
         
         ; 设置恢复定时器
-        pauseInterval := Integer(pauseOnClick.interval.Value)
+        pauseInterval := ToInt(pauseOnClick.interval.Value)
         SetTimer(ResumeAfterClickPause, pauseInterval)
     }
 }
