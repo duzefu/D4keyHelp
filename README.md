@@ -36,3 +36,15 @@ tab键查看地图的时候会暂停宏(但是有概率不起效果)
 1. 本脚本含有点位取色功能(用于 提供维持BUFF功能), 不知道会不会封号
 2. 仅我个人而已, 我用了好几个赛季了从没被封过(steam国际服), 导航也是用的飞起. 感觉没那么容易封号
 3. 不过这种鼠标宏部分在很多情况不如手柄宏, 用过steam 手柄宏的应该懂我在说什么. 所以也而没有那么有用
+
+---
+
+## Star History
+
+<a href="https://star-history.com/#duzefu/D4keyHelp&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=duzefu/D4keyHelp&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=duzefu/D4keyHelp&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=duzefu/D4keyHelp&type=Date" />
+  </picture>
+</a>
