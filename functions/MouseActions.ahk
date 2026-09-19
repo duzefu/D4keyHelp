@@ -64,7 +64,7 @@ PressLeftClick() {
         if ShouldSkipBuffPress("left")
             return
         ClickWithShift()
-        DebugLog("点击鼠标左键(维持BUFF模式)")
+        DebugLog("点击鼠标左键(维持BUFF模式)", 2)
     } else if (mouseMode = SKILL_MODE_HOLD) {
         if (!mouseHoldStates["left"]) {
             if (shiftEnabled)
@@ -72,11 +72,11 @@ PressLeftClick() {
 
             Click "down left"
             mouseHoldStates["left"] := true
-            DebugLog("按住鼠标左键")
+            DebugLog("按住鼠标左键", 2)
         }
     } else {
         ClickWithShift()
-        DebugLog("点击鼠标左键")
+        DebugLog("点击鼠标左键", 2)
     }
 }
 
@@ -96,7 +96,7 @@ PressRightClick() {
         if ShouldSkipBuffPress("right")
             return
         ClickWithShift("right")
-        DebugLog("点击鼠标右键(维持BUFF模式)")
+        DebugLog("点击鼠标右键(维持BUFF模式)", 2)
     } else if (mouseMode = SKILL_MODE_HOLD) {
         if (!mouseHoldStates["right"]) {
             if (shiftEnabled)
@@ -104,11 +104,11 @@ PressRightClick() {
 
             Click "down right"
             mouseHoldStates["right"] := true
-            DebugLog("按住鼠标右键")
+            DebugLog("按住鼠标右键", 2)
         }
     } else {
         ClickWithShift("right")
-        DebugLog("点击鼠标右键")
+        DebugLog("点击鼠标右键", 2)
     }
 }
 
@@ -121,13 +121,13 @@ ResetMouseButtonStates() {
     if (mouseHoldStates["left"]) {
         Click "up left"
         mouseHoldStates["left"] := false
-        DebugLog("释放鼠标左键")
+        DebugLog("释放鼠标左键", 2)
     }
 
     if (mouseHoldStates["right"]) {
         Click "up right"
         mouseHoldStates["right"] := false
-        DebugLog("释放鼠标右键")
+        DebugLog("释放鼠标右键", 2)
     }
 
     Send "{Shift up}"
@@ -164,7 +164,7 @@ MoveMouseToNextPoint() {
         ; 更新到下一个点
         mouseAutoMoveCurrentPoint := Mod(mouseAutoMoveCurrentPoint, 6) + 1
 
-        DebugLog("鼠标自动移动到点" mouseAutoMoveCurrentPoint ": x=" currentPoint.x ", y=" currentPoint.y)
+        DebugLog("鼠标自动移动到点" mouseAutoMoveCurrentPoint ": x=" currentPoint.x ", y=" currentPoint.y, 2)
     } catch as err {
         DebugLog("鼠标自动移动失败: " err.Message)
     }

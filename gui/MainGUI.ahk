@@ -86,6 +86,9 @@ CreateMainGUI() {
 InitializeGUI() {
     global myGui, statusBar, MUI_T, MUI_FontName
 
+    ; 日志开关与轮转要在最早的日志写入之前初始化
+    InitLogging()
+
     ; 创建主GUI
     CreateMainGUI()
 

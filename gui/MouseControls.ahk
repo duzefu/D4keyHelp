@@ -1,13 +1,18 @@
 ; ========== 额外设置控件（仿D3keyHelper风格） ==========
 /**
  * 创建额外设置区域
- * 包含：Shift开关、翻滚、喝药、强移、鼠标自动移动、鼠标点击暂停、罗盘专用
+ * 包含：Shift开关、调试日志、翻滚、喝药（含血量检测）、强移、鼠标自动移动、
+ *       鼠标点击暂停、罗盘专用、自动嬗变、血量检测与血球检测点
  */
 CreateExtraSettings() {
     global myGui, utilityControls, mouseAutoMove, pauseOnClick, compassControl
 
-    ; Row 1: 按住Shift
-    myGui.AddCheckbox("x35 y420 w120 h22" MUI_CardBg, "按住 Shift").OnEvent("Click", ToggleShift)
+    ; Row 1: 按住Shift + 调试日志
+    shiftCheck := myGui.AddCheckbox("x35 y420 w120 h22" MUI_CardBg, "按住 Shift")
+    shiftCheck.OnEvent("Click", ToggleShift)
+    debugLogCheck := myGui.AddCheckbox("x290 y420 w100 h22 Checked" MUI_CardBg, "调试日志")
+    debugLogCheck.ToolTip := "关闭后不再写日志文件；开启后可在 settings.ini 里把 DebugLogVerbose 设为 1 记录每次按键明细"
+    clearLogButton := ModernButton(myGui, 400, 414, 110, 30, "清理日志", "secondary", {radius: 8, fontSize: 9})
 
     ; Row 2: 翻滚
     myGui.AddText("x35 y454 w55 h22 right" MUI_CardBg, "翻滚：")
@@ -88,6 +93,9 @@ CreateExtraSettings() {
         interval: compassIntervalEdit
     }
 
+    ; 新增控件挂在 utilityControls 上，供保存/加载使用
+    utilityControls.debugLog := debugLogCheck
+
     ; 注册事件
     mouseAutoMoveEnable.OnEvent("Click", ToggleMouseAutoMove)
     mouseAutoMoveEnable.OnEvent("Click", ScheduleAutoSave)
@@ -112,6 +120,32 @@ CreateExtraSettings() {
     forceMoveIntervalEdit.OnEvent("Change", ScheduleAutoSave)
 
     upgradeYellowEnable.OnEvent("Click", ScheduleAutoSave)
+
+    ; 新增功能事件
+    debugLogCheck.OnEvent("Click", OnDebugLogToggled)
+    clearLogButton.OnEvent("Click", OnClearLogs)
+}
+
+/**
+ * 切换调试日志开关
+ */
+OnDebugLogToggled(ctrl, *) {
+    global statusBar
+
+    enabled := SetLogEnabled(ctrl.Value)
+    if (statusBar != "")
+        statusBar.Text := "调试日志已" (enabled ? "开启" : "关闭")
+}
+
+/**
+ * 清理日志文件
+ */
+OnClearLogs(*) {
+    global statusBar
+
+    freed := ClearLogs()
+    if (statusBar != "")
+        statusBar.Text := "日志已清理，释放 " Round(freed / 1024, 1) " KB"
 }
 
 /**

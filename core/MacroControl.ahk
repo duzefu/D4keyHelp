@@ -80,7 +80,7 @@ ApplyTimerToggle(stateKey, control, timerFunc, enabled, label) {
         if (interval > 0) {
             SetTimer(timerFunc, interval)
             timerStates[stateKey] := true
-            DebugLog("启动" label "定时器 - 间隔: " interval)
+            DebugLog("启动" label "定时器 - 间隔: " interval, 2)
         }
     } else {
         SetTimer(timerFunc, 0)

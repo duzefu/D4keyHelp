@@ -2,6 +2,9 @@
 ; 核心状态变量
 global DEBUG := true
 global debugLogFile := A_ScriptDir "\debugd4.log"
+global LOG_VERBOSE := false              ; 是否记录高频明细日志（每次按键）
+global LOG_MAX_BYTES := 2 * 1024 * 1024  ; 单个日志文件大小上限，超过则轮转
+global logWriteCount := 0                ; 写入计数（用于降低大小检查频率）
 global isRunning := false
 global isPaused := false
 global previouslyPaused := false

@@ -60,7 +60,7 @@ StartSkillTimers() {
             boundSkillTimers[i] := PressSkill.Bind(i)
             SetTimer(boundSkillTimers[i], interval)
             timerStates[i] := true
-            DebugLog("启动技能" i "定时器，间隔: " interval)
+            DebugLog("启动技能" i "定时器，间隔: " interval, 2)
         }
     }
 }
@@ -91,7 +91,7 @@ StartMouseAutoMoveTimer() {
         if (interval > 0) {
             SetTimer(MoveMouseToNextPoint, interval)
             timerStates["mouseAutoMove"] := true
-            DebugLog("启动鼠标自动移动定时器 - 间隔: " interval)
+            DebugLog("启动鼠标自动移动定时器 - 间隔: " interval, 2)
         }
     }
 }
@@ -109,7 +109,7 @@ StartCompassTimer() {
         if (interval > 0) {
             SetTimer(CompassClick, interval)
             timerStates["compass"] := true
-            DebugLog("启动罗盘专用定时器 - 间隔: " interval)
+            DebugLog("启动罗盘专用定时器 - 间隔: " interval, 2)
         }
     }
 }
@@ -128,7 +128,7 @@ StartSingleTimer(name, control, timerFunc) {
         if (interval > 0) {
             SetTimer(timerFunc, interval)
             timerStates[name] := true
-            DebugLog("启动" name "定时器 - 间隔: " interval)
+            DebugLog("启动" name "定时器 - 间隔: " interval, 2)
         }
     }
 }
@@ -161,7 +161,7 @@ StopAllTimers() {
         if boundSkillTimers.Has(A_Index) {
             SetTimer(boundSkillTimers[A_Index], 0)
             boundSkillTimers.Delete(A_Index)
-            DebugLog("停止技能" A_Index "定时器")
+            DebugLog("停止技能" A_Index "定时器", 2)
         }
 
         ; 如果是按住模式，确保释放按键

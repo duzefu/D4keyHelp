@@ -25,7 +25,7 @@ PressDodge() {
 
     if (isRunning && !isPaused && utilityControls.dodge.enable.Value = 1) {
         SendKey("Space")
-        DebugLog("按下翻滚键")
+        DebugLog("按下翻滚键", 2)
     }
 }
 
@@ -54,7 +54,7 @@ PressForceMove() {
         key := utilityControls.forceMove.key.Value
         if (key != "") {
             SendKey(key)
-            DebugLog("按下强制移动键: " key)
+            DebugLog("按下强制移动键: " key, 2)
         }
     }
 }
@@ -529,7 +529,7 @@ ResetAllHoldKeyStates() {
             key := skillControls[skillNum].key.Value
             if (key != "") {
                 Send "{" key " up}"
-                DebugLog("ResetAllHoldKeyStates 释放技能" skillNum " 键: " key)
+                DebugLog("ResetAllHoldKeyStates 释放技能" skillNum " 键: " key, 2)
             }
         }
         if (boundCheckHoldTimers.Has(skillNum)) {
@@ -558,7 +558,7 @@ ReleaseAllKeys() {
         key := skillControls[A_Index].key.Value
         if key != "" {
             Send "{" key " up}"
-            DebugLog("释放技能" A_Index " 键: " key)
+            DebugLog("释放技能" A_Index " 键: " key, 2)
         }
     }
 

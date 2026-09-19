@@ -53,6 +53,7 @@ SaveSettings(*) {
         ; 保存预设元信息
         SavePresetMeta(settingsFile)
         SaveHotkeySettings(settingsFile)
+        SaveGeneralSettings(settingsFile)
 
         ; 保存各类设置（带预设前缀）
         SaveSkillSettings(settingsFile, prefix)
@@ -392,6 +393,18 @@ SaveUtilitySettings(file, prefix := "") {
 }
 
 /**
+ * 保存全局设置（不随预设切换）
+ * @param {String} file - 设置文件路径
+ */
+SaveGeneralSettings(file) {
+    global DEBUG, LOG_VERBOSE, MUI_Theme
+
+    IniWrite(DEBUG ? 1 : 0, file, "General", "DebugLog")
+    IniWrite(LOG_VERBOSE ? 1 : 0, file, "General", "DebugLogVerbose")
+    IniWrite(MUI_Theme, file, "UI", "Theme")
+}
+
+/**
  * 保存罗盘专用设置
  * @param {String} file - 设置文件路径
  * @param {String} prefix - Section前缀（如 "Preset1_"）
@@ -424,6 +437,7 @@ LoadSettings() {
         }
 
         LoadHotkeySettings(settingsFile)
+        LoadGeneralSettings(settingsFile)
 
         ; 更新预设Tab显示
         UpdatePresetTabs()
@@ -488,7 +502,9 @@ StripThousandsSeparators() {
  * 选择策略下拉框，越界时回退到禁用(1)
  */
 ChooseStrategy(control, strategy) {
-    if (strategy >= 1 && strategy <= 4)
+    global strategyNames
+
+    if (strategy >= 1 && strategy <= strategyNames.Length)
         control.strategy.Choose(strategy)
     else
         control.strategy.Choose(1)
@@ -589,6 +605,23 @@ LoadUtilitySettings(file, prefix := "") {
         utilityControls.upgradeYellow.enable.Value := IniRead(file, section, "UpgradeYellowEnable", 0)
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
+    }
+}
+
+/**
+ * 加载全局设置（不随预设切换）
+ * @param {String} file - 设置文件路径
+ */
+LoadGeneralSettings(file) {
+    global utilityControls, DEBUG, LOG_VERBOSE
+
+    try {
+        ; DEBUG / LOG_VERBOSE 已由 InitLogging 读取，这里只同步界面勾选状态
+        utilityControls.debugLog.Value := DEBUG ? 1 : 0
+        DebugLog("加载全局设置完成 - 记录日志: " (DEBUG ? "开启" : "关闭")
+            . "，明细日志: " (LOG_VERBOSE ? "开启" : "关闭"))
+    } catch as err {
+        DebugLog("加载全局设置出错: " err.Message)
     }
 }
 

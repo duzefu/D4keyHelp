@@ -28,7 +28,7 @@ PressSkill(skillNum) {
 
         ; 发送按键
         SendKey(key)
-        DebugLog("按下技能" skillNum " 键(维持BUFF模式): " key)
+        DebugLog("按下技能" skillNum " 键(维持BUFF模式): " key, 2)
     }
     else if (skillMode = SKILL_MODE_HOLD) {
         ; 按住模式 - 按下并保持按键
@@ -36,7 +36,7 @@ PressSkill(skillNum) {
         if (!holdKeyStates.Has(skillNum) || !holdKeyStates[skillNum]) {
             Send "{" key " down}"
             holdKeyStates[skillNum] := true
-            DebugLog("按住技能" skillNum " 键: " key)
+            DebugLog("按住技能" skillNum " 键: " key, 2)
 
             ; 设置一个定时器，每5秒检查一次是否需要继续按住
             ; 保存绑定引用，便于后续SetTimer(..., 0)停止
@@ -47,7 +47,7 @@ PressSkill(skillNum) {
     else {
         ; 默认连点模式 - 直接发送按键
         SendKey(key)
-        DebugLog("按下技能" skillNum " 键(连点模式): " key)
+        DebugLog("按下技能" skillNum " 键(连点模式): " key, 2)
     }
 }
 
@@ -64,7 +64,7 @@ ShouldSkipBuffPress(slot) {
         if (skillPositions.Has(slot)) {
             pos := skillPositions[slot]
             if (IsSkillActive(pos.x, pos.y)) {
-                DebugLog("技能" slot "已激活，跳过")
+                DebugLog("技能" slot "已激活，跳过", 2)
                 return true
             }
         }
@@ -92,7 +92,7 @@ CheckHoldKey(skillNum, key) {
         if (holdKeyStates.Has(skillNum) && holdKeyStates[skillNum]) {
             Send "{" key " up}"
             holdKeyStates[skillNum] := false
-            DebugLog("释放技能" skillNum " 键: " key)
+            DebugLog("释放技能" skillNum " 键: " key, 2)
 
             ; 用保存的绑定引用停止定时器
             if (boundCheckHoldTimers.Has(skillNum)) {
