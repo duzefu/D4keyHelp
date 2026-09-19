@@ -39,10 +39,15 @@ global strategyNames := ["禁用", "连点", "维持BUFF", "按住"]
 
 ; 条件喝药（血量检测）
 global healthCheckEnabled := false                                  ; 是否启用血量检测
-global healthPoint := {x: 0, y: 0, color: {r: 0, g: 0, b: 0}, ready: false}
-global HEALTH_MATCH_TOLERANCE := 40                                 ; 与基准色的平均通道差阈值
+global healthStatusText := ""                                       ; 界面上显示血量/识别结果的控件
+global healthLastState := ""                                        ; 最近一次识别状态：ok / shield / fail
+global healthLastPct := -1                                          ; 最近一次血量读数
+global healthUiTick := 0                                            ; 界面文本刷新节流时间戳
+global healthUiState := ""                                          ; 界面上一次显示的状态（变化时立即刷新）
+global healthCacheTick := 0                                         ; 血球识别结果的缓存时间
+global healthCacheState := ""                                       ; 血球识别结果缓存
+global HEALTH_CACHE_MS := 500                                       ; 识别结果缓存时长，避免喝药间隔过小时反复截图
 global lastPotionTick := 0                                          ; 上次喝药时间（防止连按）
-global healthPointText := ""                                        ; 血球检测点显示控件
 
 ; 技能位置映射
 global skillPositions := Map(

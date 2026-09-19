@@ -25,7 +25,20 @@ macro_script_v2.ahk
 macro_script_v2.exe
 ```
 
-**无构建/测试命令** - 这是一个直接运行的AutoHotkey脚本。
+**无构建命令** - 直接运行 AutoHotkey 脚本。
+
+**测试（tests/）：**
+```bash
+# 回归测试：用四张 2K 参考截图的真实像素验证血球识别（无需启动游戏）
+python tests/ExportGlobeWindows.py      # 生成 tests/data/*.bin（需 Pillow，截图为本地文件）
+AutoHotkey64.exe tests/HealthGlobeTest.ahk   # 结果写入 tests/result.txt
+
+# 冒烟测试：加载全部模块并创建界面，1.5 秒后自动退出
+AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
+```
+
+运行测试前先确认没有正在跑的应用实例（`#SingleInstance` 相关行为），且测试会创建测试目录下的
+`settings.ini`/`debugd4.log`，不会碰用户配置。
 
 ## 架构和核心组件
 
@@ -47,12 +60,15 @@ macro_script_v2.exe
 ├── functions/              # 功能实现模块
 │   ├── SkillSystem.ahk     # 技能系统
 │   ├── MouseActions.ahk    # 鼠标动作
-│   └── UtilityActions.ahk  # 功能键动作
+│   ├── UtilityActions.ahk  # 功能键动作（含通用屏幕抓取 CaptureScreenRegion）
+│   ├── HealthGlobe.ahk     # 血球自动识别 + 血量估算（条件喝药的感知层）
+│   └── ConditionSystem.ahk # 条件判定（是否该喝药）与界面动作
 ├── utils/                  # 工具类模块
 │   ├── Logger.ahk          # 日志记录
 │   └── Settings.ahk        # 设置管理
-└── hotkeys/               # 热键定义模块
-    └── GameHotkeys.ahk    # 游戏热键
+├── hotkeys/               # 热键定义模块
+│   └── GameHotkeys.ahk    # 游戏热键
+└── tests/                  # 开发用测试（回归 + 冒烟）
 ```
 
 ### 核心架构模式
@@ -98,6 +114,12 @@ macro_script_v2.exe
 - 六点屏幕移动模式
 - 屏幕分辨率自适应定位
 - 可配置移动间隔
+
+**血量检测 / 条件喝药（`functions/HealthGlobe.ahk` + `functions/ConditionSystem.ahk`）：**
+- 按屏幕尺寸推算血球区域（2K 下圆心 = 屏幕宽/2-465, 屏幕高-116，半径 90），区域内自动定位液面
+- 结论按"圆缺面积占比"换算成血量百分比；护盾覆盖血球（球体变品红）时判定为读不到血量
+- 读取失败退回按间隔定时喝药；护盾策略见界面上的「护盾遮挡时不喝药」
+- 像素判据与标定值都写在 `HealthGlobe.ahk` 顶部注释里，改动后必须重跑 `tests/HealthGlobeTest.ahk`
 
 ## 配置文件
 

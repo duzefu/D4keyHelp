@@ -378,7 +378,7 @@ SaveMouseSettings(file, prefix := "") {
  * @param {String} prefix - Section前缀（如 "Preset1_"）
  */
 SaveUtilitySettings(file, prefix := "") {
-    global utilityControls, healthPoint
+    global utilityControls
     section := prefix . "Utility"
 
     IniWrite(utilityControls.dodge.enable.Value, file, section, "DodgeEnable")
@@ -393,10 +393,8 @@ SaveUtilitySettings(file, prefix := "") {
 
     ; 血量检测（条件喝药）
     IniWrite(utilityControls.healthCheck.enable.Value, file, section, "HealthCheckEnable")
-    IniWrite(healthPoint.ready ? 1 : 0, file, section, "HealthPointSet")
-    IniWrite(healthPoint.x, file, section, "HealthPointX")
-    IniWrite(healthPoint.y, file, section, "HealthPointY")
-    IniWrite(ColorToHex(healthPoint.color), file, section, "HealthPointColor")
+    IniWrite(utilityControls.healthCheck.threshold.Value, file, section, "HealthThreshold")
+    IniWrite(utilityControls.healthCheck.shieldSafe.Value, file, section, "HealthShieldSafe")
 }
 
 /**
@@ -594,7 +592,7 @@ LoadMouseSettings(file, prefix := "") {
  * @param {String} prefix - Section前缀（如 "Preset1_"）
  */
 LoadUtilitySettings(file, prefix := "") {
-    global utilityControls, healthCheckEnabled, healthPoint
+    global utilityControls, healthCheckEnabled
     section := prefix . "Utility"
 
     try {
@@ -613,25 +611,14 @@ LoadUtilitySettings(file, prefix := "") {
 
         ; 血量检测（条件喝药）
         utilityControls.healthCheck.enable.Value := IniReadInt(file, section, "HealthCheckEnable", 0)
+        utilityControls.healthCheck.threshold.Value := IniReadInt(file, section, "HealthThreshold", 50)
+        utilityControls.healthCheck.shieldSafe.Value := IniReadInt(file, section, "HealthShieldSafe", 1)
         healthCheckEnabled := (utilityControls.healthCheck.enable.Value = 1)
-
-        pointSet := IniReadInt(file, section, "HealthPointSet", 0)
-        pointX := IniReadInt(file, section, "HealthPointX", 0)
-        pointY := IniReadInt(file, section, "HealthPointY", 0)
-        pointColor := IniRead(file, section, "HealthPointColor", "")
-        if (pointColor = "ERROR")
-            pointColor := ""
-
-        healthPoint := {
-            x: pointX,
-            y: pointY,
-            color: ColorFromHex(pointColor),
-            ready: (pointSet = 1 && pointX > 0 && pointY > 0 && pointColor != "")
-        }
-        UpdateHealthPointText()
+        UpdateHealthStatusText()
 
         DebugLog("加载功能键设置完成 - 血量检测: " (healthCheckEnabled ? "启用" : "禁用")
-            . "，检测点: " (healthPoint.ready ? healthPoint.x "," healthPoint.y : "未设置"))
+            . "，阈值: " utilityControls.healthCheck.threshold.Value "%"
+            . "，护盾遮挡跳过: " (utilityControls.healthCheck.shieldSafe.Value = 1 ? "是" : "否"))
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
     }

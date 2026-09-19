@@ -31,7 +31,7 @@ PressDodge() {
 
 /**
  * 按下喝药键
- * 启用"血量检测"时，只在血球上拾取点的颜色偏离基准色（血量低于该高度）时才喝
+ * 启用"血量检测"时，先读血球液面估算血量，低于阈值才喝
  */
 PressPotion() {
     global isRunning, isPaused, utilityControls, healthCheckEnabled, lastPotionTick
@@ -41,7 +41,7 @@ PressPotion() {
 
     if (healthCheckEnabled) {
         if (!ShouldDrinkPotion()) {
-            DebugLog("血量高于设定高度，跳过喝药", 2)
+            DebugLog("血量未低于阈值，跳过喝药", 2)
             return
         }
 
@@ -184,17 +184,15 @@ ReadCapturedPatchAvg(capture, screenX, screenY, radius) {
 }
 
 /**
- * 一次性截取装备栏区域（11x3 格），避免逐点 PixelGetColor
+ * 抓取屏幕区域到内存位图（BGR 24 位，行按 4 字节对齐）
+ * @param {Integer} originX, originY - 区域左上角屏幕坐标
+ * @param {Integer} width, height - 区域尺寸
+ * @returns {Object} {bits, stride, width, height, originX, originY, ok}
  */
-CaptureInventoryGridBitmap(startX, startY, stepX, stepY) {
-    offset := GetInventoryBottomRightOffset(stepX, stepY)
-    margin := GetInventorySampleRadius() + 4
-    originX := Round(startX) - margin
-    originY := Round(startY) - margin
-    endX := Round(startX + 10 * stepX + offset.x) + margin
-    endY := Round(startY + 2 * stepY + offset.y) + margin
-    width := endX - originX + 1
-    height := endY - originY + 1
+CaptureScreenRegion(originX, originY, width, height) {
+    if (width <= 0 || height <= 0)
+        return {bits: Buffer(8), stride: 0, width: 0, height: 0
+            , originX: originX, originY: originY, ok: 0}
 
     hdcScreen := DllCall("GetDC", "Ptr", 0, "Ptr")
     hdcMem := DllCall("CreateCompatibleDC", "Ptr", 0, "Ptr")
@@ -211,7 +209,8 @@ CaptureInventoryGridBitmap(startX, startY, stepX, stepY) {
     NumPut("UShort", 24, bi, 14)
 
     stride := ((width * 3 + 3) // 4) * 4
-    bits := Buffer(stride * height)
+    ; 多分配 8 字节：允许按 4 字节整块读取行末像素
+    bits := Buffer(stride * height + 8)
     ok := DllCall("gdi32\GetDIBits", "Ptr", hdcMem, "Ptr", hBitmap, "UInt", 0, "Int", height
         , "Ptr", bits, "Ptr", bi, "UInt", 0)
 
@@ -220,7 +219,22 @@ CaptureInventoryGridBitmap(startX, startY, stepX, stepY) {
     DllCall("DeleteDC", "Ptr", hdcMem)
     DllCall("ReleaseDC", "Ptr", 0, "Ptr", hdcScreen)
 
-    return {bits: bits, stride: stride, width: width, height: height, originX: originX, originY: originY, ok: ok}
+    return {bits: bits, stride: stride, width: width, height: height
+        , originX: originX, originY: originY, ok: ok}
+}
+
+/**
+ * 一次性截取装备栏区域（11x3 格），避免逐点 PixelGetColor
+ */
+CaptureInventoryGridBitmap(startX, startY, stepX, stepY) {
+    offset := GetInventoryBottomRightOffset(stepX, stepY)
+    margin := GetInventorySampleRadius() + 4
+    originX := Round(startX) - margin
+    originY := Round(startY) - margin
+    endX := Round(startX + 10 * stepX + offset.x) + margin
+    endY := Round(startY + 2 * stepY + offset.y) + margin
+
+    return CaptureScreenRegion(originX, originY, endX - originX + 1, endY - originY + 1)
 }
 
 /**
