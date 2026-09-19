@@ -575,3 +575,22 @@ ReleaseAllKeys() {
 
     DebugLog("已释放所有按键")
 }
+
+/**
+ * 退出前的兜底清理
+ * 脚本正常退出、窗口关闭、被 #SingleInstance Force 顶掉时都会走这里，
+ * 确保不会把按住状态的按键留在游戏里
+ */
+CleanupOnExit(*) {
+    global isRunning
+
+    try {
+        StopAllTimers()      ; 内含释放技能键与鼠标键
+        ReleaseAllKeys()
+        isRunning := false
+        DebugLog("退出清理完成：已停止所有定时器并释放按键")
+    } catch as err {
+        ; 退出阶段不再弹错误框，只记录
+        LogError("退出清理失败: " err.Message)
+    }
+}

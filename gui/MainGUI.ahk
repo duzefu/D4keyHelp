@@ -89,6 +89,9 @@ InitializeGUI() {
     ; 日志开关与轮转要在最早的日志写入之前初始化
     InitLogging()
 
+    ; 全局异常兜底：记录并抑制错误弹窗，避免定时器线程因异常弹出对话框
+    OnError(GlobalErrorHandler)
+
     ; 创建主GUI
     CreateMainGUI()
 
@@ -112,6 +115,30 @@ InitializeGUI() {
     ; 设置窗口事件处理 - 退出时自动保存
     myGui.OnEvent("Close", OnGuiClose)
     myGui.OnEvent("Escape", OnGuiClose)
+
+    ; 退出兜底：停止定时器并释放所有被按住的按键，避免退出后游戏里按键卡住
+    OnExit(CleanupOnExit)
+}
+
+/**
+ * 全局异常处理：写日志并抑制错误弹窗
+ * 定时器/热键线程里未捕获的异常如果冒泡到默认处理器，会弹窗打断宏的运行
+ * @param {Object} err - Error 对象
+ * @param {String} mode - 出错时的执行模式
+ * @returns {Boolean} - true 表示已处理，不再弹窗
+ */
+GlobalErrorHandler(err, mode) {
+    global isRunning
+
+    try {
+        LogError("未处理异常 [" mode "] " err.Message
+            . " | 位置: " (err.File = "" ? "?" : err.File) ":" err.Line
+            . " | 宏运行中: " (isRunning ? "是" : "否"))
+    } catch {
+        ; 记录异常时再次出错，忽略（避免死循环）
+    }
+
+    return true
 }
 
 /**

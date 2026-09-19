@@ -17,6 +17,9 @@ ToggleMacro(*) {
         isPaused := false
         previouslyPaused := false
 
+        ; 启动前先确保没有残留的按下状态（上次异常退出等）
+        ReleaseAllKeys()
+
         ; 确保鼠标自动移动状态与GUI勾选框一致
         mouseAutoMoveEnabled := (mouseAutoMove.enable.Value = 1)
 
