@@ -378,7 +378,7 @@ SaveMouseSettings(file, prefix := "") {
  * @param {String} prefix - Section前缀（如 "Preset1_"）
  */
 SaveUtilitySettings(file, prefix := "") {
-    global utilityControls
+    global utilityControls, healthPoint
     section := prefix . "Utility"
 
     IniWrite(utilityControls.dodge.enable.Value, file, section, "DodgeEnable")
@@ -390,6 +390,13 @@ SaveUtilitySettings(file, prefix := "") {
     IniWrite(utilityControls.forceMove.enable.Value, file, section, "ForceMoveEnable")
     IniWrite(utilityControls.forceMove.interval.Value, file, section, "ForceMoveInterval")
     IniWrite(utilityControls.upgradeYellow.enable.Value, file, section, "UpgradeYellowEnable")
+
+    ; 血量检测（条件喝药）
+    IniWrite(utilityControls.healthCheck.enable.Value, file, section, "HealthCheckEnable")
+    IniWrite(healthPoint.ready ? 1 : 0, file, section, "HealthPointSet")
+    IniWrite(healthPoint.x, file, section, "HealthPointX")
+    IniWrite(healthPoint.y, file, section, "HealthPointY")
+    IniWrite(ColorToHex(healthPoint.color), file, section, "HealthPointColor")
 }
 
 /**
@@ -587,7 +594,7 @@ LoadMouseSettings(file, prefix := "") {
  * @param {String} prefix - Section前缀（如 "Preset1_"）
  */
 LoadUtilitySettings(file, prefix := "") {
-    global utilityControls
+    global utilityControls, healthCheckEnabled, healthPoint
     section := prefix . "Utility"
 
     try {
@@ -603,8 +610,49 @@ LoadUtilitySettings(file, prefix := "") {
         utilityControls.forceMove.interval.Value := IniRead(file, section, "ForceMoveInterval", 50)
 
         utilityControls.upgradeYellow.enable.Value := IniRead(file, section, "UpgradeYellowEnable", 0)
+
+        ; 血量检测（条件喝药）
+        utilityControls.healthCheck.enable.Value := IniReadInt(file, section, "HealthCheckEnable", 0)
+        healthCheckEnabled := (utilityControls.healthCheck.enable.Value = 1)
+
+        pointSet := IniReadInt(file, section, "HealthPointSet", 0)
+        pointX := IniReadInt(file, section, "HealthPointX", 0)
+        pointY := IniReadInt(file, section, "HealthPointY", 0)
+        pointColor := IniRead(file, section, "HealthPointColor", "")
+        if (pointColor = "ERROR")
+            pointColor := ""
+
+        healthPoint := {
+            x: pointX,
+            y: pointY,
+            color: ColorFromHex(pointColor),
+            ready: (pointSet = 1 && pointX > 0 && pointY > 0 && pointColor != "")
+        }
+        UpdateHealthPointText()
+
+        DebugLog("加载功能键设置完成 - 血量检测: " (healthCheckEnabled ? "启用" : "禁用")
+            . "，检测点: " (healthPoint.ready ? healthPoint.x "," healthPoint.y : "未设置"))
     } catch as err {
         DebugLog("加载功能键设置出错: " err.Message)
+    }
+}
+
+/**
+ * 读取整数型设置项，任何异常都回退到默认值
+ * @param {String} file - 设置文件路径
+ * @param {String} section - INI Section
+ * @param {String} key - 键名
+ * @param {Integer} default - 默认值
+ * @returns {Integer}
+ */
+IniReadInt(file, section, key, default) {
+    try {
+        value := IniRead(file, section, key, default)
+        if (value = "ERROR" || value = "")
+            return default
+        return Integer(value)
+    } catch {
+        return default
     }
 }
 

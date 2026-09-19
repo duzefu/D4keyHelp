@@ -34,8 +34,15 @@ global SKILL_MODE_BUFF := 2     ; 维持BUFF模式
 global SKILL_MODE_HOLD := 3     ; 按住模式
 global skillModeNames := ["连点", "维持BUFF", "按住"]
 
-; 策略下拉框选项（仿D3风格：禁用=1, 连点=2, 维持BUFF=3, 按住=4）
+; 策略下拉框选项（禁用=1, 连点=2, 维持BUFF=3, 按住=4）
 global strategyNames := ["禁用", "连点", "维持BUFF", "按住"]
+
+; 条件喝药（血量检测）
+global healthCheckEnabled := false                                  ; 是否启用血量检测
+global healthPoint := {x: 0, y: 0, color: {r: 0, g: 0, b: 0}, ready: false}
+global HEALTH_MATCH_TOLERANCE := 40                                 ; 与基准色的平均通道差阈值
+global lastPotionTick := 0                                          ; 上次喝药时间（防止连按）
+global healthPointText := ""                                        ; 血球检测点显示控件
 
 ; 技能位置映射
 global skillPositions := Map(

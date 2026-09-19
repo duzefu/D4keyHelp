@@ -6,6 +6,7 @@
  */
 CreateExtraSettings() {
     global myGui, utilityControls, mouseAutoMove, pauseOnClick, compassControl
+    global healthPointText
 
     ; Row 1: 按住Shift + 调试日志
     shiftCheck := myGui.AddCheckbox("x35 y420 w120 h22" MUI_CardBg, "按住 Shift")
@@ -22,13 +23,17 @@ CreateExtraSettings() {
     dodgeIntervalEdit := myGui.AddEdit("x355 y452 w90 Number", "1000")
     dodgeIntervalUpDown := myGui.AddUpDown("0x80 Range100-60000", 1000)
 
-    ; Row 3: 喝药
+    ; Row 3: 喝药（含血量检测）
     myGui.AddText("x35 y488 w55 h22 right" MUI_CardBg, "喝药：")
     potionKey := myGui.AddHotkey("x100 y486 w50 h22", "q")
     potionEnable := myGui.AddCheckbox("x165 y488 w70 h22" MUI_CardBg, "启用")
     myGui.AddText("x250 y488 w100 h22" MUI_CardBg, "间隔 (ms)：")
     potionIntervalEdit := myGui.AddEdit("x355 y486 w90 Number", "15000")
     potionIntervalUpDown := myGui.AddUpDown("0x80 Range100-60000", 15000)
+    healthCheckEnable := myGui.AddCheckbox("x455 y488 w85 h22" MUI_CardBg, "血量检测")
+    healthCheckEnable.ToolTip := "开启后只在血量低于检测点高度时喝药，建议把喝药间隔改成 1000~2000ms"
+    pickHealthButton := ModernButton(myGui, 548, 484, 140, 30, "拾取血球位置", "secondary", {radius: 8, fontSize: 9})
+    pickHealthButton.ToolTip := "点击后 3 秒，把鼠标停在血球上「想开始喝药的血量高度」"
 
     ; Row 4: 强移
     myGui.AddText("x35 y522 w55 h22 right" MUI_CardBg, "强移：")
@@ -55,6 +60,13 @@ CreateExtraSettings() {
     upgradeYellowEnable := myGui.AddCheckbox("x382 y590 w98 h22" MUI_CardBg, "升级黄装")
     ModernButton(myGui, 482, 584, 120, 30, "自动嬗变 (F3)", "soft", {radius: 8, fontSize: 9}).OnEvent("Click", AutoTransmute)
     ModernButton(myGui, 608, 584, 30, 30, "?", "secondary", {radius: 15, fontSize: 10}).OnEvent("Click", OpenTransmuteHelp)
+
+    ; Row 7: 血球检测点（配合"血量检测"使用）
+    myGui.AddText("x35 y624 w95 h22 right" MUI_CardBg, "血球检测点：")
+    healthPointText := myGui.AddText("x138 y624 w390 h22" MUI_CardBg, "未拾取（未拾取时按原定时喝药）")
+    healthPointText.ToolTip := "血量低于该点高度时喝药；点右侧按钮可查看该点当前颜色与判定结果"
+    testColorButton := ModernButton(myGui, 548, 618, 140, 30, "测试取色", "secondary", {radius: 8, fontSize: 9})
+    testColorButton.ToolTip := "读取血球检测点的当前颜色，与基准色比较后显示判定结果"
 
     ; 存储控件引用
     utilityControls := {
@@ -94,6 +106,7 @@ CreateExtraSettings() {
     }
 
     ; 新增控件挂在 utilityControls 上，供保存/加载使用
+    utilityControls.healthCheck := {enable: healthCheckEnable}
     utilityControls.debugLog := debugLogCheck
 
     ; 注册事件
@@ -124,6 +137,10 @@ CreateExtraSettings() {
     ; 新增功能事件
     debugLogCheck.OnEvent("Click", OnDebugLogToggled)
     clearLogButton.OnEvent("Click", OnClearLogs)
+    healthCheckEnable.OnEvent("Click", OnHealthCheckToggled)
+    healthCheckEnable.OnEvent("Click", ScheduleAutoSave)
+    pickHealthButton.OnEvent("Click", PickHealthPoint)
+    testColorButton.OnEvent("Click", TestColorSampling)
 }
 
 /**
@@ -146,6 +163,22 @@ OnClearLogs(*) {
     freed := ClearLogs()
     if (statusBar != "")
         statusBar.Text := "日志已清理，释放 " Round(freed / 1024, 1) " KB"
+}
+
+/**
+ * 切换血量检测开关
+ */
+OnHealthCheckToggled(ctrl, *) {
+    global healthCheckEnabled, statusBar, healthPoint
+
+    healthCheckEnabled := (ctrl.Value = 1)
+
+    if (healthCheckEnabled && !healthPoint.ready) {
+        if (statusBar != "")
+            statusBar.Text := "血量检测已开启，请先点「拾取血球位置」设置检测点"
+    } else if (statusBar != "") {
+        statusBar.Text := "血量检测已" (healthCheckEnabled ? "开启" : "关闭")
+    }
 }
 
 /**

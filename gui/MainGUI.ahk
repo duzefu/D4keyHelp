@@ -52,32 +52,32 @@ CreateMainGUI() {
     CreateSkillRows()
 
     ; ========== 额外设置卡片 ==========
-    MUI_AddCard(myGui, 12, 376, 696, 252)
+    MUI_AddCard(myGui, 12, 376, 696, 284)
     myGui.SetFont("s11 bold " title, MUI_FontName)
     myGui.AddText("x32 y390 w200 h24 " MUI_CardBg, "额外设置")
     myGui.SetFont("s10 norm " text, MUI_FontName)
     CreateExtraSettings()
 
     ; ========== 底部控制卡片 ==========
-    MUI_AddCard(myGui, 12, 640, 696, 60)
+    MUI_AddCard(myGui, 12, 672, 696, 60)
     myGui.SetFont("s11 bold", MUI_FontName)
-    statusText := myGui.AddText("x32 y658 w180 h26 " MUI_CardBg, "● 状态: 未运行")
+    statusText := myGui.AddText("x32 y690 w180 h26 " MUI_CardBg, "● 状态: 未运行")
     statusText.SetFont(muted)  ; 初始未运行=灰
 
     myGui.SetFont("s9 norm " text, MUI_FontName)
-    myGui.AddText("x212 y661 w50 h22 right " MUI_CardBg, "启停：")
-    startStopHotkeyCtrl := myGui.AddHotkey("x266 y656 w70", "F1")
-    startStopMouseCtrl := myGui.AddDropDownList("x342 y656 w80 Choose1", ["键盘", "中键", "侧键1", "侧键2"])
+    myGui.AddText("x212 y693 w50 h22 right " MUI_CardBg, "启停：")
+    startStopHotkeyCtrl := myGui.AddHotkey("x266 y688 w70", "F1")
+    startStopMouseCtrl := myGui.AddDropDownList("x342 y688 w80 Choose1", ["键盘", "中键", "侧键1", "侧键2"])
 
-    startStopButton := ModernButton(myGui, 434, 650, 160, 40, "开始  (F1)", "primary", {fontSize: 11, radius: 10})
+    startStopButton := ModernButton(myGui, 434, 682, 160, 40, "开始  (F1)", "primary", {fontSize: 11, radius: 10})
     startStopButton.OnEvent("Click", ToggleMacro)
-    ModernButton(myGui, 602, 650, 94, 40, "保存设置", "secondary", {fontSize: 10, radius: 10}).OnEvent("Click", SaveSettings)
+    ModernButton(myGui, 602, 682, 94, 40, "保存设置", "secondary", {fontSize: 10, radius: 10}).OnEvent("Click", SaveSettings)
 
     startStopHotkeyCtrl.OnEvent("Change", OnStartStopKeyboardChanged)
     startStopMouseCtrl.OnEvent("Change", OnStartStopMouseChanged)
 
     myGui.SetFont("s9 " faint, MUI_FontName)
-    myGui.AddText("x16 y708 w688 h20", "提示：启停键可配置 | F3 自动嬗变/取消（魔盒界面）| Tab 查看地图暂停 | 仅暗黑4窗口生效")
+    myGui.AddText("x16 y740 w688 h20", "提示：启停键可配置 | F3 自动嬗变/取消（魔盒界面）| Tab 查看地图暂停 | 仅暗黑4窗口生效")
 }
 
 /**
@@ -98,8 +98,8 @@ InitializeGUI() {
     ; 底部状态条（用 Text 代替 StatusBar，以便跟随主题配色）
     footerOpt := " +0x200 Background" MUI_Hex(MUI_T.footer)
     myGui.SetFont("s9 norm c" MUI_Hex(MUI_T.muted), MUI_FontName)
-    myGui.AddText("x0 y732 w720 h28" footerOpt, "")
-    statusBar := myGui.AddText("x14 y732 w700 h28" footerOpt, "就绪")
+    myGui.AddText("x0 y762 w720 h28" footerOpt, "")
+    statusBar := myGui.AddText("x14 y762 w700 h28" footerOpt, "就绪")
     MUI_ApplyNativeTheme(myGui)
 
     ; 先加载设置（在Show之前，避免Tab2内的DropDownList渲染不刷新）
@@ -107,7 +107,7 @@ InitializeGUI() {
     RegisterStartStopHotkey()
 
     ; 显示GUI（此时下拉框值已正确设置，首次渲染即为正确状态）
-    myGui.Show("w720 h760")
+    myGui.Show("w720 h794")
 
     ; 强制重绘窗口，确保所有控件（尤其是Tab2内的DropDownList）正确显示
     WinRedraw(myGui.Hwnd)

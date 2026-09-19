@@ -31,17 +31,34 @@ PressDodge() {
 
 /**
  * 按下喝药键
+ * 启用"血量检测"时，只在血球上拾取点的颜色偏离基准色（血量低于该高度）时才喝
  */
 PressPotion() {
-    global isRunning, isPaused, utilityControls
+    global isRunning, isPaused, utilityControls, healthCheckEnabled, lastPotionTick
 
-    if (isRunning && !isPaused && utilityControls.potion.enable.Value = 1) {
-        key := utilityControls.potion.key.Value
-        if (key != "") {
-            SendKey(key)
-            DebugLog("按下喝药键: " key)
+    if (!isRunning || isPaused || utilityControls.potion.enable.Value != 1)
+        return
+
+    if (healthCheckEnabled) {
+        if (!ShouldDrinkPotion()) {
+            DebugLog("血量高于设定高度，跳过喝药", 2)
+            return
+        }
+
+        ; 血量持续偏低时不要连续按键（游戏内药水也有冷却）
+        if (A_TickCount - lastPotionTick < 1500) {
+            DebugLog("喝药冷却中，跳过", 2)
+            return
         }
     }
+
+    key := utilityControls.potion.key.Value
+    if (key = "")
+        return
+
+    SendKey(key)
+    lastPotionTick := A_TickCount
+    DebugLog("按下喝药键: " key, 2)
 }
 
 /**

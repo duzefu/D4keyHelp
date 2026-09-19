@@ -29,6 +29,7 @@ ProcessSetPriority "High"
 #Include "functions/SkillSystem.ahk"
 #Include "functions/MouseActions.ahk"
 #Include "functions/UtilityActions.ahk"
+#Include "functions/ConditionSystem.ahk"
 
 ; 热键定义
 #Include "hotkeys/GameHotkeys.ahk"
