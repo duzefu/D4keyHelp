@@ -1,3 +1,7 @@
+
+
+
+
 # D4keyHelp
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,9 +12,7 @@
 
 **演示视频**（1 分 38 秒，介绍全部功能与上手方法）
 
-<!-- VIDEO: 在 GitHub 网页上编辑本文件，把 promo/D4KeyHelp_Promo_web.mp4 拖进编辑框，
-     生成的 https://github.com/user-attachments/assets/... 链接单独占一行即可内嵌播放，然后删掉下面这行封面 -->
-[![D4KeyHelp 演示视频](promo/poster.jpg)](promo/D4KeyHelp_Promo_web.mp4)
+https://github.com/user-attachments/assets/26f0ba7f-a3bc-4468-b734-fce76c4f680c
 
 | 浅色模式 | 深色模式 |
 | :---: | :---: |
