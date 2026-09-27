@@ -49,15 +49,8 @@ global healthCacheState := ""                                       ; 血球识�
 global HEALTH_CACHE_MS := 500                                       ; 识别结果缓存时长，避免喝药间隔过小时反复截图
 global lastPotionTick := 0                                          ; 上次喝药时间（防止连按）
 
-; 技能位置映射
-global skillPositions := Map(
-    1, {x: 1035, y: 1290},
-    2, {x: 1035 + 84, y: 1290},
-    3, {x: 1035 + 84 * 2, y: 1290},
-    4, {x: 1035 + 84 * 3, y: 1290},
-    "left", {x: 1035 + 84 * 4, y: 1290},
-    "right", {x: 1035 + 84 * 5, y: 1290}
-)
+; 动作栏（技能栏）槽位坐标：不再写死在 2K 上，改为按屏幕尺寸推算
+; 标定值与算法见 functions/SkillSystem.ahk 顶部注释和 GetSkillSlotPos()
 
 ; 定时器相关变量
 global boundSkillTimers := Map()       ; 存储绑定的技能定时器函数
