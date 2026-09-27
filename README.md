@@ -6,6 +6,12 @@
 
 一个有图形界面、可自定义配置的**暗黑破坏神4**键鼠宏工具。基于 AutoHotkey v2.0，所有热键仅在暗黑4窗口激活时生效。
 
+**演示视频**（1 分 38 秒，介绍全部功能与上手方法）
+
+<!-- VIDEO: 在 GitHub 网页上编辑本文件，把 promo/D4KeyHelp_Promo_web.mp4 拖进编辑框，
+     生成的 https://github.com/user-attachments/assets/... 链接单独占一行即可内嵌播放，然后删掉下面这行封面 -->
+[![D4KeyHelp 演示视频](promo/poster.jpg)](promo/D4KeyHelp_Promo_web.mp4)
+
 | 浅色模式 | 深色模式 |
 | :---: | :---: |
 | ![mainPage](mainPage.png) | ![mainPage-dark](mainPage-dark.png) |

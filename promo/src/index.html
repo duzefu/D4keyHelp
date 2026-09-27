@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>D4KeyHelp Promo</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  #gl { display: block; width: 1920px; height: 1080px; }
+  body.preview #gl { width: 100vw; height: 56.25vw; max-height: calc(100vh - 40px); max-width: calc((100vh - 40px) * 1.7778); margin: 0 auto; cursor: pointer; }
+  #ui { display: none; }
+  body.preview #ui { display: flex; gap: 12px; align-items: center; padding: 8px 16px; color: #c9b58a; font: 13px sans-serif; }
+  #bar { flex: 1; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="ui"><input id="bar" type="range" min="0" step="0.01" value="0"><span id="info"></span></div>
+<script src="timeline.js"></script>
+<script src="engine.js"></script>
+<script src="components.js"></script>
+<script src="scenes1.js"></script>
+<script src="scenes2.js"></script>
+<script src="audio.js"></script>
+<script src="main.js"></script>
+<script>
+  if (location.search.includes('preview')) { document.body.classList.add('preview'); preview(); }
+</script>
+</body>
+</html>
