@@ -500,9 +500,9 @@ AutoTransmute(*) {
             totalCount := itemPositions.Length
             if (totalCount = 0) {
                 hint := upgradeYellow
-                    ? "自动嬗变：装备栏/背包没有识别到传奇/暗金或稀有装备"
-                    : "自动嬗变：装备栏/背包没有识别到暗金/传奇装备"
-                UpdateStatus("未找到目标物品", hint)
+                    ? L("bar.transmuteNoTargetRedYellow")
+                    : L("bar.transmuteNoTargetRed")
+                UpdateStatus("noTarget", hint)
                 DebugLog("自动嬗变：未找到目标物品(品质=" targetQuality ")")
                 return
             }
@@ -514,8 +514,8 @@ AutoTransmute(*) {
                     break
                 }
 
-                qualityLabel := (itemPos.quality = "yellow") ? "黄装升传奇" : "红装重塑"
-                UpdateStatus("自动嬗变中", "正在处理第 " index "/" totalCount " 个物品[" qualityLabel "]（F3 取消）")
+                qualityLabel := (itemPos.quality = "yellow") ? L("bar.transmuteLabel.yellow") : L("bar.transmuteLabel.red")
+                UpdateStatus("transmuting", L("bar.transmuteProgress", index, totalCount, qualityLabel))
 
                 ok := (itemPos.quality = "yellow")
                     ? TransmuteYellowItem(itemPos)
@@ -530,13 +530,13 @@ AutoTransmute(*) {
         }
 
         if cancelled {
-            UpdateStatus("已取消", "自动嬗变已取消，已处理 " processedCount "/" totalCount " 个物品")
+            UpdateStatus("cancelled", L("bar.transmuteCancelled", processedCount, totalCount))
             DebugLog("自动嬗变：已取消，已处理 " processedCount "/" totalCount " 个物品")
         } else {
-            UpdateStatus("自动嬗变完成", "已处理 " processedCount " 个物品")
+            UpdateStatus("transmuteDone", L("bar.transmuteDone", processedCount))
         }
     } catch as err {
-        UpdateStatus("自动嬗变失败", "自动嬗变失败: " err.Message)
+        UpdateStatus("transmuteFailed", L("bar.transmuteFailed", err.Message))
         DebugLog("自动嬗变失败: " err.Message)
     } finally {
         isAutoTransmuting := false

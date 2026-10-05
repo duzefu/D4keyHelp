@@ -6,6 +6,7 @@
 #NoTrayIcon
 
 ; 与应用完全一致的模块加载顺序
+#Include "..\utils\Lang.ahk"
 #Include "..\core\GlobalVars.ahk"
 #Include "..\utils\Logger.ahk"
 #Include "..\utils\Settings.ahk"

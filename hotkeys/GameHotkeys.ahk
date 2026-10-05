@@ -20,10 +20,10 @@ Tab::{
 
     if isPaused {
         StopAllTimers()
-        UpdateStatus("已暂停", "宏已暂停")
+        UpdateStatus("paused", L("bar.macroPaused"))
     } else {
         StartAllTimers()
-        UpdateStatus("运行中", "宏已继续")
+        UpdateStatus("running", L("bar.macroResumed"))
     }
 }
 
@@ -49,7 +49,7 @@ RButton::{
         ; 暂停宏
         StopAllTimers()
         temporaryPaused := true
-        UpdateStatus("临时暂停", "检测到鼠标点击，宏临时暂停")
+        UpdateStatus("tempPaused", L("bar.clickPaused"))
         DebugLog("检测到鼠标点击，临时暂停宏")
         
         ; 设置恢复定时器

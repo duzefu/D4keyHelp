@@ -61,10 +61,10 @@ SaveSettings(*) {
         SaveUtilitySettings(settingsFile, prefix)
         SaveCompassSettings(settingsFile, prefix)
 
-        statusBar.Text := "设置已保存 [" . presetNames[currentPreset] . "]"
+        statusBar.Text := L("status.settingsSaved", presetNames[currentPreset])
         DebugLog("所有设置已保存到: " settingsFile " [预设" . currentPreset . ": " . presetNames[currentPreset] . "]")
     } catch as err {
-        statusBar.Text := "保存设置失败: " err.Message
+        statusBar.Text := L("status.settingsSaveFailed", err.Message)
         DebugLog("保存设置失败: " err.Message)
     }
 }
@@ -114,7 +114,9 @@ LoadPresetMeta(file) {
             currentPreset := 1
 
         Loop 4 {
-            presetNames[A_Index] := IniRead(file, "Presets", "Preset" . A_Index . "Name", "配置" . A_Index)
+            ; 默认名（配置1 / Profile 1）跟随界面语言显示，用户改过的名字原样保留
+            storedName := IniRead(file, "Presets", "Preset" . A_Index . "Name", "")
+            presetNames[A_Index] := Lang_NormalizePresetName(storedName, A_Index)
         }
         DebugLog("预设元信息已加载，当前预设: " . currentPreset . " - " . presetNames[currentPreset])
         return true
@@ -180,7 +182,8 @@ MigrateOldSettings(file) {
 
     ; 设置默认预设元信息
     currentPreset := 1
-    presetNames := ["配置1", "配置2", "配置3", "配置4"]
+    presetNames := [L("preset.default", 1), L("preset.default", 2)
+        , L("preset.default", 3), L("preset.default", 4)]
     SavePresetMeta(file)
 
     DebugLog("旧设置迁移完成，已设置为配置1")
@@ -195,7 +198,7 @@ SwitchPreset(targetIndex) {
 
     ; 如果宏正在运行，阻止切换
     if (isRunning) {
-        statusBar.Text := "请先停止宏再切换预设"
+        statusBar.Text := L("status.presetStopFirst")
         DebugLog("宏运行中，阻止切换预设")
         ; 恢复Tab到当前预设
         UpdatePresetTabs()
@@ -228,13 +231,13 @@ SwitchPreset(targetIndex) {
         LoadCompassSettings(settingsFile, prefix)
         StripThousandsSeparators()
 
-        statusBar.Text := "已切换到: " . presetNames[currentPreset]
+        statusBar.Text := L("status.presetSwitched", presetNames[currentPreset])
         DebugLog("已切换到预设" . currentPreset . ": " . presetNames[currentPreset])
 
         ; 更新Tab显示
         UpdatePresetTabs()
     } catch as err {
-        statusBar.Text := "切换预设失败: " . err.Message
+        statusBar.Text := L("status.presetSwitchFailed", err.Message)
         DebugLog("切换预设失败: " . err.Message)
     }
 }
@@ -258,7 +261,7 @@ OnPresetTabChange(ctrl, *) {
         suppressTabChange := true
         ctrl.Choose(currentPreset)
         suppressTabChange := false
-        statusBar.Text := "请先停止宏再切换配置"
+        statusBar.Text := L("status.tabStopFirst")
         DebugLog("宏运行中，阻止切换配置Tab")
         return
     }
@@ -283,7 +286,7 @@ RenamePreset(index, *) {
     global currentPreset, presetNames, statusBar
 
     ; 弹出输入框
-    result := InputBox("请输入新的配置名称:", "重命名配置" . index, "w300 h120", presetNames[index])
+    result := InputBox(L("rename.prompt"), L("rename.title", index), "w300 h120", presetNames[index])
 
     if (result.Result = "Cancel" || result.Value = "")
         return
@@ -298,7 +301,7 @@ RenamePreset(index, *) {
     ; 更新Tab显示
     UpdatePresetTabs()
 
-    statusBar.Text := "配置" . index . "已重命名为: " . newName
+    statusBar.Text := L("status.presetRenamed", index, newName)
     DebugLog("配置" . index . "重命名为: " . newName)
 }
 
@@ -402,11 +405,12 @@ SaveUtilitySettings(file, prefix := "") {
  * @param {String} file - 设置文件路径
  */
 SaveGeneralSettings(file) {
-    global DEBUG, LOG_VERBOSE, MUI_Theme
+    global DEBUG, LOG_VERBOSE, MUI_Theme, appLang
 
     IniWrite(DEBUG ? 1 : 0, file, "General", "DebugLog")
     IniWrite(LOG_VERBOSE ? 1 : 0, file, "General", "DebugLogVerbose")
     IniWrite(MUI_Theme, file, "UI", "Theme")
+    IniWrite(appLang, file, "UI", "Language")
 }
 
 /**

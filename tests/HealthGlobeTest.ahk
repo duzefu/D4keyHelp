@@ -6,6 +6,7 @@
 #NoTrayIcon
 
 ; 与应用一致的加载顺序（保证函数与全局变量都能解析，不产生加载期告警）
+#Include "..\utils\Lang.ahk"
 #Include "..\core\GlobalVars.ahk"
 #Include "..\utils\Logger.ahk"
 #Include "..\utils\Settings.ahk"

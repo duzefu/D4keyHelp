@@ -35,16 +35,16 @@ ToggleMacro(*) {
             }
 
             StartAllTimers()
-            UpdateStatus("运行中", "宏已启动")
+            UpdateStatus("running", L("bar.macroStarted"))
         } else {
             isPaused := true
-            UpdateStatus("已暂停(窗口切换)", "宏已暂停 - 窗口未激活")
+            UpdateStatus("pausedWindow", L("bar.windowInactive"))
         }
     } else {
         ; 确保重置所有状态
         isPaused := false
         previouslyPaused := false
-        UpdateStatus("已停止", "宏已停止")
+        UpdateStatus("stopped", L("bar.macroStopped"))
 
         ; 确保释放所有按键
         ReleaseAllKeys()
@@ -133,7 +133,7 @@ ResumeAfterClickPause() {
         ; 恢复宏运行
         StartAllTimers()
         temporaryPaused := false
-        UpdateStatus("运行中", "宏已从鼠标点击暂停中恢复")
+        UpdateStatus("running", L("bar.clickResumed"))
         DebugLog("宏已从鼠标点击暂停中恢复")
     }
 }

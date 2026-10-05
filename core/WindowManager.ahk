@@ -26,32 +26,37 @@ OnWindowChange(isActive) {
             if (!isPaused) {
                 StopAllTimers()
                 isPaused := true
-                UpdateStatus("已暂停(窗口切换)", "宏已暂停 - 窗口未激活")
+                UpdateStatus("pausedWindow", L("bar.windowInactive"))
             }
         }
     } else if (isRunning && isPaused && !previouslyPaused) {  ; 窗口获得焦点且之前不是手动暂停
         StartAllTimers()
         isPaused := false
-        UpdateStatus("运行中", "宏已恢复 - 窗口已激活")
+        UpdateStatus("running", L("bar.windowActive"))
     }
 }
 
 /**
  * 更新状态显示
- * @param {String} status - 主状态文本
- * @param {String} barText - 状态栏文本
+ * @param {String} stateKey - 状态键（state.running / state.paused / state.stopped …），
+ *                            用于取状态文字与配色，见 utils/Lang.ahk
+ * @param {String} barText - 状态栏文本（调用方先按当前语言取好）
+ * @param {String} statusLabel - 可选：覆盖状态文字（默认取 state.<stateKey> 的译文）
  */
-UpdateStatus(status, barText) {
+UpdateStatus(stateKey, barText, statusLabel := "") {
     global statusText, statusBar
-    statusText.Value := "● 状态: " status
+    label := (statusLabel != "") ? statusLabel : L("state." stateKey)
+    statusText.Value := L("main.status.prefix") . label
     ; 根据状态着色：运行中=绿，暂停=橙，其他=灰
-    if (InStr(status, "运行"))
-        color := "10B981"
-    else if (InStr(status, "暂停"))
-        color := "F59E0B"
-    else
-        color := MUI_Hex(MUI_T.muted)
+    switch stateKey {
+        case "running":
+            color := "10B981"
+        case "paused", "pausedWindow", "tempPaused":
+            color := "F59E0B"
+        default:
+            color := MUI_Hex(MUI_T.muted)
+    }
     statusText.SetFont("c" color)
     statusBar.Text := barText
-    DebugLog("状态更新: " status " | " barText)
+    DebugLog("状态更新: " label " | " barText)
 }

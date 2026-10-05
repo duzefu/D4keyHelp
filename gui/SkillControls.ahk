@@ -8,8 +8,8 @@ CreateSkillRows() {
 
     skillControls := Map()
 
-    ; 行标签
-    skillLabels := ["技能一：", "技能二：", "技能三：", "技能四：", "左键技能：", "右键技能："]
+    ; 行标签（文案随界面语言）
+    skillLabels := [L("skill.1"), L("skill.2"), L("skill.3"), L("skill.4"), L("skill.left"), L("skill.right")]
     defaultKeys := ["1", "2", "3", "4", "LButton", "RButton"]
 
     Loop 6 {
@@ -26,7 +26,7 @@ CreateSkillRows() {
             keyCtrl := myGui.AddEdit("x130 y" yPos " w75 Disabled", defaultKeys[row])
         }
 
-        ; 策略下拉框（禁用/连点/维持BUFF/按住）
+        ; 策略下拉框（禁用/连点/维持BUFF/按住；名称随语言，存盘用的是序号）
         strategyCtrl := myGui.AddDropDownList("x215 y" yPos " w95 Choose1", strategyNames)
 
         ; 执行间隔（Edit + UpDown）

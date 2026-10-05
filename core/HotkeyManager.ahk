@@ -78,7 +78,7 @@ RegisterStartStopHotkey(newHotkey := "") {
     newHotkey := NormalizeStartStopHotkey(newHotkey)
     if (IsForbiddenStartStopHotkey(newHotkey)) {
         if (statusBar != "")
-            statusBar.Text := "启停键无效，已保留: " . GetStartStopHotkeyDisplay()
+            statusBar.Text := L("status.hotkeyInvalid", GetStartStopHotkeyDisplay())
         UpdateStartStopHotkeyUi()
         return false
     }
@@ -103,7 +103,7 @@ RegisterStartStopHotkey(newHotkey := "") {
             }
         }
         if (statusBar != "")
-            statusBar.Text := "启停键注册失败: " . err.Message
+            statusBar.Text := L("status.hotkeyRegisterFailed", err.Message)
         UpdateStartStopHotkeyUi()
         return false
     }
@@ -122,7 +122,7 @@ ApplyStartStopHotkey(newHotkey, shouldSave := true) {
         if (shouldSave)
             SaveSettings()
         if (statusBar != "")
-            statusBar.Text := "启停键已设置为: " . GetStartStopHotkeyDisplay()
+            statusBar.Text := L("status.hotkeySet", GetStartStopHotkeyDisplay())
         return true
     }
     return false

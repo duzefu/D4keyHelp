@@ -66,7 +66,7 @@ ShouldDrinkPotion() {
 TestHealthDetect(*) {
     global statusBar
 
-    statusBar.Text := "3 秒后检测血球，请切回游戏并让血球露出来…"
+    statusBar.Text := L("health.testing")
     SetTimer DetectHealthGlobeDelayed, -3000
 }
 
@@ -77,7 +77,7 @@ DetectHealthGlobeDelayed() {
     global statusBar, utilityControls
 
     if !WinActive("ahk_class Diablo IV Main Window Class") {
-        statusBar.Text := "检测中断：暗黑4 窗口不在前台，血球被别的窗口挡住时读不到"
+        statusBar.Text := L("health.testAborted")
         DebugLog("血球检测中断：暗黑4 窗口不在前台")
         return
     }
@@ -87,13 +87,12 @@ DetectHealthGlobeDelayed() {
 
     switch state.state {
         case "ok":
-            msg := "血球已识别：球心(" state.cx "," state.cy ") 半径" state.rad
-                . " · 当前血量≈" Round(state.pct) "%（阈值 " threshold "% → "
-                . (state.pct < threshold ? "会喝药" : "不喝药") "）"
+            verdict := (state.pct < threshold) ? L("health.result.drink") : L("health.result.noDrink")
+            msg := L("health.result.ok", state.cx, state.cy, state.rad, Round(state.pct), threshold, verdict)
         case "shield":
-            msg := "血球被护盾遮挡（护盾占比 " Round(state.shield * 100) "%），读不到血量"
+            msg := L("health.result.shield", Round(state.shield * 100))
         default:
-            msg := "未识别到血球：" state.reason
+            msg := L("health.result.fail", state.reason)
     }
 
     statusBar.Text := msg
@@ -119,13 +118,13 @@ UpdateHealthStatusText(force := false) {
 
     switch healthLastState {
         case "ok":
-            healthStatusText.Text := "血量 " Round(healthLastPct) "%（阈值 "
-                . utilityControls.healthCheck.threshold.Value "%）"
+            healthStatusText.Text := L("health.ui.ok", Round(healthLastPct)
+                , utilityControls.healthCheck.threshold.Value)
         case "shield":
-            healthStatusText.Text := "护盾遮挡血球，读不到血量"
+            healthStatusText.Text := L("health.ui.shield")
         case "fail":
-            healthStatusText.Text := "未识别到血球"
+            healthStatusText.Text := L("health.ui.fail")
         default:
-            healthStatusText.Text := "未检测（点「检测血球」后切回游戏）"
+            healthStatusText.Text := L("extra.healthUnknown")
     }
 }

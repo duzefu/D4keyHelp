@@ -301,7 +301,7 @@ AnalyzeHealthWindow(cap, rad := 90, priorCx := 0, priorCy := 0) {
         , surface: 0, yB: 0, reason: ""}
 
     if (!cap.ok || cap.width < 10 || cap.height < 10) {
-        result.reason := "屏幕截图失败"
+        result.reason := L("globe.err.capture")
         return result
     }
 
@@ -324,8 +324,7 @@ AnalyzeHealthWindow(cap, rad := 90, priorCx := 0, priorCy := 0) {
         , Max(2, Round(rad / 22)))
     bottomRow := FindLiquidBottomRow(profile.rowLiquid, h, profile.samplePerRow)
     if (bottomRow < 0) {
-        result.reason := "血球内没有检测到血液（窗口液体占比 "
-            . Round(profile.fill * 100, 1) "%；取景球心 " priorCx "," priorCy "）"
+        result.reason := L("globe.err.noLiquid", Round(profile.fill * 100, 1), priorCx, priorCy)
         return result
     }
 
@@ -356,7 +355,7 @@ AnalyzeHealthWindow(cap, rad := 90, priorCx := 0, priorCy := 0) {
         , Min(bottomRow, surfaceRow + 14), cyLocal, rad)
     if (brightShare < 0.25) {
         surfaceRow := ScanLiquidSurface(cap, centerCol, cyLocal, rad, true)
-        result.reason := "液面附近缺少亮红液体，已按保守方式估算"
+        result.reason := L("globe.retry.soft")
     }
 
     surface := cap.originY + surfaceRow

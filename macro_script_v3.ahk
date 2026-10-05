@@ -6,6 +6,9 @@ ProcessSetPriority "High"
 #MaxThreadsPerHotkey 2
 
 ; ========== 包含所有模块 ==========
+; 界面语言（必须早于 GlobalVars：策略名、预设名在定义时就要按语言取值）
+#Include "utils/Lang.ahk"
+
 ; 全局变量定义
 #Include "core/GlobalVars.ahk"
 

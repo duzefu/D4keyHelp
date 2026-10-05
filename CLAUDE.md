@@ -65,6 +65,7 @@ AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
 │   └── ConditionSystem.ahk # 条件判定（是否该喝药）与界面动作
 ├── utils/                  # 工具类模块
 │   ├── Logger.ahk          # 日志记录
+│   ├── Lang.ahk            # 界面多语言（中文 / English）语言表与 L() 取值函数
 │   └── Settings.ahk        # 设置管理
 ├── hotkeys/               # 热键定义模块
 │   └── GameHotkeys.ahk    # 游戏热键
@@ -121,11 +122,22 @@ AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
 - 读取失败退回按间隔定时喝药；护盾策略见界面上的「护盾遮挡时不喝药」
 - 像素判据与标定值都写在 `HealthGlobe.ahk` 顶部注释里，改动后必须重跑 `tests/HealthGlobeTest.ahk`
 
+**界面多语言（`utils/Lang.ahk`）：**
+- 所有界面文字统一用 `L("key")` 取当前语言，需要插值的用 `L("key", 参数…)` 替换 `{1}`、`{2}`
+- 语言表 `LANG_TABLE` 按 key 存 `zh` / `en` 两列；新增文案必须两列都写，缺失会回落到中文
+- 语言存在 `settings.ini` 的 `[UI] Language`（`zh` 默认 / `en`），`Lang_Init()` 在脚本加载时读一次
+- 右上角语言按钮走 `ToggleLanguage()`（在 `gui/MainGUI.ahk`，与 `ToggleTheme()` 对称）：保存设置 → `Reload()`
+- 语言是开关型而不是运行期替换：控件文字在创建时定下来，所以切换语言靠重载脚本
+- 状态栏状态用状态键而不是文字判断颜色（`UpdateStatus("running"|"paused"|…)`），避免翻译影响配色
+- 一律不翻译：`debugd4.log` 的日志内容、INI 的键名、`settings.ini` 里存的策略序号（下拉框存的是序号，所以改文案不会影响老配置）
+
 ## 配置文件
 
 - `settings.ini` - 持久设置存储，包含技能、鼠标和功能键部分
 - 使用标准INI格式，UTF-16编码
 - 首次运行时自动创建默认设置
+- `[UI]` 段存界面外观：`Theme`（light/dark）、`Language`（zh/en）
+- 加载顺序：`utils/Lang.ahk` 必须排在 `core/GlobalVars.ahk` 之前（策略名与预设默认名在定义时就要按语言取值）
 
 ## 重要实现说明
 
@@ -141,3 +153,4 @@ AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
 - 技能位置的硬编码屏幕坐标（针对2K分辨率优化）
 - 广泛的调试日志系统写入`debugd4.log`
 - 除AutoHotkey v2.0运行时外无外部依赖
+- 新增或修改界面文案时，改的是 `utils/Lang.ahk` 的语言表，不要在控件代码里直接写中文；英文比中文长，注意控件宽度是否够（烟测能验证脚本能加载，但不会验证文字被截断）

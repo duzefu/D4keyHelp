@@ -113,7 +113,7 @@ MUI_HotkeyText(hwnd) {
     vk := hk & 0xFF
     mods := (hk >> 8) & 0xFF
     if !vk
-        return "无"
+        return L("common.none")
     text := ""
     if (mods & 0x2)
         text .= "Ctrl + "
