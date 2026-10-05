@@ -18,7 +18,7 @@ global LANG_TABLE := Map(
     "common.intervalMs",            {zh: "间隔 (ms)：", en: "Interval (ms):"},
 
     ; ---------- 主窗口 ----------
-    "app.title",                    {zh: "暗黑4助手 v2.5", en: "D4 Key Helper v2.5"},
+    "app.title",                    {zh: "暗黑4助手 v2.6", en: "D4 Key Helper v2.6"},
     "main.renameHint",              {zh: "右键配置名可重命名", en: "Right-click to rename"},
     "main.theme.toDark",            {zh: "深色模式", en: "Dark mode"},
     "main.theme.toLight",           {zh: "浅色模式", en: "Light mode"},
