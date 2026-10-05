@@ -82,6 +82,9 @@ global LANG_TABLE := Map(
     "extra.upgradeYellow",          {zh: "升级黄装", en: "Upgrade rares"},
     "extra.transmute",              {zh: "自动嬗变 (F3)", en: "Auto transmute (F3)"},
     "extra.transmuteHelp.tip",      {zh: "打开说明文档", en: "Open the documentation"},
+    ; 说明文档链接跟着界面语言走：中文看 README.md，英文看 README_EN.md
+    "extra.transmuteHelp.url",      {zh: "https://github.com/duzefu/D4keyHelp#readme"
+                                   , en: "https://github.com/duzefu/D4keyHelp/blob/main/README_EN.md"},
     "extra.threshold",              {zh: "血量阈值：", en: "HP threshold:"},
     "extra.threshold.tip",          {zh: "血量低于该百分比才喝药（血球液面高度换算，50 即球心位置）"
                                    , en: "Drink only below this HP percentage (derived from the globe's liquid level; 50 is the orb center)"},

@@ -4,6 +4,12 @@
 
 # D4keyHelp
 
+<div align="center">
+
+**简体中文** · [English](README_EN.md)
+
+</div>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![AutoHotkey](https://img.shields.io/badge/AutoHotkey-v2.0-green.svg)](https://www.autohotkey.com/)
 [![Release](https://img.shields.io/github/v/release/duzefu/D4keyHelp?label=Release)](https://github.com/duzefu/D4keyHelp/releases)

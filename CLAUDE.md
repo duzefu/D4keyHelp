@@ -154,3 +154,4 @@ AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
 - 广泛的调试日志系统写入`debugd4.log`
 - 除AutoHotkey v2.0运行时外无外部依赖
 - 新增或修改界面文案时，改的是 `utils/Lang.ahk` 的语言表，不要在控件代码里直接写中文；英文比中文长，注意控件宽度是否够（烟测能验证脚本能加载，但不会验证文字被截断）
+- 文档有两份：`README.md`（中文，仓库默认显示）和 `README_EN.md`（英文），顶部互相有语言切换链接；改了一份要同步另一份

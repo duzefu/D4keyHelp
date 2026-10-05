@@ -205,8 +205,8 @@ OnHealthCheckToggled(ctrl, *) {
 }
 
 /**
- * 打开GitHub README查看自动嬗变说明
+ * 打开说明文档（链接随界面语言切换：中文 README.md / 英文 README_EN.md）
  */
 OpenTransmuteHelp(*) {
-    Run "https://github.com/duzefu/D4keyHelp#readme"
+    Run L("extra.transmuteHelp.url")
 }
