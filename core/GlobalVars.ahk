@@ -32,10 +32,12 @@ global isAutoTransmuting := false    ; 自动嬗变运行状态（F3再次按下
 global SKILL_MODE_CLICK := 1    ; 连点模式
 global SKILL_MODE_BUFF := 2     ; 维持BUFF模式
 global SKILL_MODE_HOLD := 3     ; 按住模式
-global skillModeNames := ["连点", "维持BUFF", "按住"]
+; 名称随界面语言变化，只用于显示；逻辑判定一律用上面的模式编号
+global skillModeNames := [L("strategy.click"), L("strategy.buff"), L("strategy.hold")]
 
 ; 策略下拉框选项（禁用=1, 连点=2, 维持BUFF=3, 按住=4）
-global strategyNames := ["禁用", "连点", "维持BUFF", "按住"]
+; 存到 settings.ini 的是下拉框序号，所以翻译不会影响已有配置
+global strategyNames := [L("strategy.off"), L("strategy.click"), L("strategy.buff"), L("strategy.hold")]
 
 ; 条件喝药（血量检测）
 global healthCheckEnabled := false                                  ; 是否启用血量检测
@@ -76,6 +78,7 @@ global compassControl := {}       ; 罗盘专用控件
 
 ; 预设配置变量
 global currentPreset := 1                                    ; 当前选中的预设索引 (1-4)
-global presetNames := ["配置1", "配置2", "配置3", "配置4"]    ; 预设名称数组
+global presetNames := [L("preset.default", 1), L("preset.default", 2)
+    , L("preset.default", 3), L("preset.default", 4)]        ; 预设名称数组（默认名跟随界面语言）
 global presetTab := ""                                         ; 预设Tab控件
 global suppressTabChange := false                              ; 抑制Tab切换事件标志
