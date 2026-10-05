@@ -29,7 +29,6 @@ https://github.com/user-attachments/assets/26f0ba7f-a3bc-4468-b734-fce76c4f680c
 - [Hotkeys](#hotkeys)
 - [Features](#features)
 - [Limitations](#limitations)
-- [Project Structure](#project-structure)
 - [About](#about)
 
 ---
@@ -43,26 +42,19 @@ Grab `D4keyHelp.exe` from [Releases](https://github.com/duzefu/D4keyHelp/release
 ### Option 2: Run from source
 
 1. Install the **latest AutoHotkey v2.0** (note: **not** the more common v1.3, the two are incompatible)
-2. Double-click `macro_script_v3.ahk` (the modular version, recommended)
+2. Double-click `macro_script_v3.ahk`
 
 ### Three steps to get going
 
 1. After launching, pick a **Mode** and an **Interval** for each skill under **Skill Macro**
 2. Switch back to the game and press **F1** to start (press it again to stop)
-3. Closing the window or clicking **Save settings** writes `settings.ini`; your setup is restored on the next launch
+3. Your settings are saved automatically and restored on the next launch
 
 ---
 
 ## UI Overview
 
-The window is made up of three cards. In the top-right corner you can switch between light/dark theme and switch the UI language (Chinese / English, Chinese by default). Both actions reload the script, so stop the macro first.
-
-### UI language
-
-- Every UI string comes from the language table in `utils/Lang.ahk`; the top-right button shows the language you will switch **to** (a Chinese UI shows `English`, an English UI shows `中文`)
-- The language is stored in `settings.ini` under `[UI] Language` (`zh` = Chinese, `en` = English); an invalid value falls back to Chinese
-- Default profile names follow the UI language (`配置1` ⇄ `Profile 1`); names you renamed yourself are kept as-is
-- Only UI text switches language; the run details in `debugd4.log` stay in Chinese so the same keywords still work when troubleshooting
+The window is made up of three cards, with four profiles along the top. In the top-right corner you can switch between light/dark theme and switch the UI language (Chinese / English, Chinese by default). Both actions reload the script, so stop the macro first.
 
 ### 1. Skill Macro
 
@@ -79,33 +71,26 @@ Six rows: **Skill 1–4** + **LMB skill** + **RMB skill**. Each row has:
 How the modes differ:
 
 - **Repeat** — triggers over and over at a fixed interval, good for damage skills
-- **Keep buff** — samples the skill icon's pixels first and only re-casts once the buff has dropped, instead of mashing the key
+- **Keep buff** — watches the skill icon and only re-casts once the buff has dropped, instead of mashing the key
 - **Hold** — keeps the key held down, good for channeled skills
 
-
-
 ### 2. Extra Settings
-
 
 | Feature | Default key | Default interval | Description |
 | -------- | --- | -------- | ----------------------- |
 | Hold Shift | —   | —        | Every macro key press is sent with Shift (attack in place) |
 | Dodge | Space | 1000 ms  | Automatic dodge |
 | Potion | Q   | 15000 ms | Drinks automatically; tick **HP check** to drink based on the health globe instead (see below) |
-| HP check | —   | —        | Detects the health globe and estimates your HP, drinking only below the **HP threshold**; no manual point picking needed |
+| HP check | —   | —        | Detects the health globe and estimates your HP, drinking only below the **HP threshold** |
 | Skip if shielded | —   | —        | A shield covering the globe hides your real HP: checked = skip (default), unchecked = drink anyway |
 | Force move | ``` | 50 ms    | Automatic force move |
 | Auto mouse move | —   | 1000 ms  | Six-point screen movement pattern, for AFK compass farming |
 | Pause on click | —   | 3000 ms  | Pauses the macro for a while after you click manually, handy for looting or using the UI |
 | Compass mode | —   | 65000 ms | Clicks the offering at your feet on a timer to start the next run automatically |
 | Upgrade rares | —   | —        | Also upgrades rare items to Legendary while auto-transmuting |
-| Test globe | —   | —        | Detects the globe once, 3 seconds after clicking (time to switch back to the game); the center, current HP and verdict show up in the status bar below |
+| Test globe | —   | —        | Detects the globe once, 3 seconds after clicking (time to switch back to the game); the result shows up in the status bar below |
 | HP threshold | —   | 50 %     | Drink only below this HP percentage (50 is exactly the middle of the globe) |
-| Debug log | —   | —        | When off, `debugd4.log` is no longer written; the adjacent **Clear log** deletes the existing logs |
-| Clear log | —   | —        | Deletes `debugd4.log` and the rotated `debugd4.old.log` |
-
-
-
+| Debug log | —   | —        | When off, nothing is logged; the adjacent **Clear log** deletes the existing logs |
 
 ### 3. Bottom Bar
 
@@ -116,7 +101,7 @@ How the modes differ:
 
 ### 4. Profiles
 
-The top of the window holds four independent profiles, **Profile 1–4** by default; click one to switch, **right-click a profile name to rename it**. Everything is persisted in `settings.ini` (UTF-16), and defaults are generated on the first launch. Profiles you have not renamed follow the UI language.
+The top of the window holds four independent profiles, **Profile 1–4** by default; click one to switch, **right-click a profile name to rename it**. Everything is saved automatically and restored on the next launch. Profiles you have not renamed follow the UI language.
 
 ---
 
@@ -137,7 +122,7 @@ The top of the window holds four independent profiles, **Profile 1–4** by defa
 
 ### F3 auto transmute
 
-At the **Horadric Cube** screen, press F3: it scans the 11 × 3 item grid at the bottom right (a single screenshot, then pixel reads from that screenshot), identifies Legendary items by the orange/red glow on their border, skips Rare (yellow), Magic (blue) and empty slots, then right-clicks each Legendary in turn and clicks transmute/reforge. Press F3 again at any time to cancel.
+At the **Horadric Cube** screen, press F3: it scans the item grid at the bottom right, identifies Legendary items by the orange/red glow on their border, skips Rare (yellow), Magic (blue) and empty slots, then right-clicks each Legendary in turn and clicks transmute/reforge. Press F3 again at any time to cancel.
 
 ### Upgrade rares
 
@@ -145,32 +130,22 @@ When ticked, auto transmute handles rare items first: it adds an affix to the ra
 
 ### Keep buff
 
-Uses pixel color detection on the skill icon to see whether the effect is still up, and only re-casts once it has dropped. **Only verified at 2K resolution** so far, and it requires the in-game UI to have the action bar centered at the bottom. Other resolutions should work in theory but are untested — verify for yourself.
+Watches the skill icon to see whether the buff is still up, and only re-casts once it has dropped. **Only verified at 2K resolution** so far, and it requires the in-game UI to have the action bar centered at the bottom. Other resolutions should work in theory but are untested — verify for yourself.
 
 ### Conditional potion (HP check)
 
 By default the potion key is just pressed on a timer. With **HP check** ticked, the macro reads the health globe and decides:
 
-1. It derives the globe's region from the screen size, then locates the orb center, radius and liquid surface inside that region (no manual point picking)
-2. The liquid level is converted into an HP percentage using the area of a circular segment, matching how the globe reads in-game
+1. It locates the orb center and the liquid level on its own, with no manual point picking
+2. The liquid level is converted into an HP percentage, matching how the globe reads in-game
 3. The potion key is only pressed below the **HP threshold**; pressing it at high HP does nothing anyway, so no potions are wasted
 
 A few notes:
 
 - **Threshold**: 50% is exactly the middle line of the globe. Raise it to drink earlier (70%, say), lower it to save potions
-- **Interval**: setting the potion interval to 1000–2000 ms is recommended; when HP check is enabled and the interval is above 5 seconds, the macro changes it to 1500 ms for you
-- **Shields**: a shield covering the globe hides the real HP (the whole orb turns purple). "Skip if shielded" is on by default because the shield is already absorbing damage; if your build keeps a shield up permanently, untick it and the macro will drink as usual
-- **Measured**: full HP = 100%, the low-HP reference screenshot = 26%, the shield reference screenshot = "shielded", and each detection takes about 15–50 ms at a normal resolution
+- **Interval**: setting the potion interval to 1000–2000 ms is recommended
+- **Shields**: a shield covering the globe hides the real HP. "Skip if shielded" is on by default because the shield is already absorbing damage; if your build keeps a shield up permanently, untick it and the macro will drink as usual
 - When the globe cannot be detected (covered by UI, not in game, …) it falls back to the original "drink on a timer" behaviour instead of skipping potions
-
-### Debug log
-
-- `debugd4.log` records state changes, saves, pixel tests and errors; enabled by default
-- Once the file exceeds 2 MB it rotates to `debugd4.old.log` (only one generation is kept), so it no longer grows forever
-- Per-keypress details are off by default; to troubleshoot, set `DebugLogVerbose` to 1 under `[General]` in `settings.ini`
-- If you don't want logs at all, untick **Debug log** in the UI, or click **Clear log** to delete them
-
-
 
 ### Auto mouse move + Compass mode
 
@@ -182,34 +157,13 @@ Illustration
 
 ---
 
-
-
 ## Limitations
 
 - Requires **AutoHotkey v2.0**; incompatible with v1.3
 - The pixel-detection features (Keep buff, auto transmute) are tuned for a **2K resolution** and the default UI layout
-- HP check derives the globe's position from the screen size; other resolutions should work but are untested. If detection looks off, click **Test globe** and check that the reported center lands on the globe in the status bar
-- When a shield covers the globe the HP cannot be read; this is handled by the "Skip if shielded" setting
+- HP check derives the globe's position from the screen size; other resolutions should work but are untested. If detection looks off, click **Test globe** and check the result in the status bar
 - All hotkeys **only work while the Diablo IV window is active**; the macro pauses automatically when you switch away
 - Tab pausing may not always work
-- Debug logs are written to `debugd4.log` (rotated to `debugd4.old.log` past 2 MB)
-
----
-
-
-
-## Project Structure
-
-```
-macro_script_v3.ahk         # Main entry point (modular version)
-├── core/                   # Globals, window management, timers, macro control, hotkeys
-├── gui/                    # Main window, skill controls, extra settings, modern UI widgets
-├── functions/              # Skill system, mouse actions, utility keys + auto transmute, condition checks
-├── utils/                  # Logging, settings I/O, UI language table (Chinese / English)
-└── hotkeys/                # In-game hotkey definitions
-```
-
-There is no build/test step — just run it. No external dependencies beyond the AutoHotkey v2.0 runtime.
 
 ---
 
