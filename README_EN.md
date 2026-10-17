@@ -62,7 +62,7 @@ Six rows: **Skill 1–4** + **LMB skill** + **RMB skill**. Each row has:
 
 | Column | Description |
 | --- | --- |
-| Key | Skills 1-4 accept any key; the mouse skills are fixed to the left/right mouse button |
+| Key | Skills 1-4 accept any key; the mouse skill rows default to the left/right mouse button, but you can type any key name (e.g. `5`, `XButton1`) to rebind them, and pick LMB/RMB from the dropdown to switch back |
 | Mode | `Off` / `Repeat` / `Keep buff` / `Hold` |
 | Interval (ms) | Time between two triggers, 300 by default |
 | Delay (ms) | Delay between press and release, 10 by default |

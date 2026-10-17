@@ -82,7 +82,7 @@ MUI_ApplyNativeTheme(gui) {
 
     for ctrl in gui {
         switch ctrl.Type {
-            case "Edit":
+            case "Edit", "ComboBox":
                 ctrl.Opt("Background" MUI_Hex(MUI_T.input))
                 ctrl.SetFont("c" MUI_Hex(MUI_T.inputText))
                 DllCall("uxtheme\SetWindowTheme", "Ptr", ctrl.Hwnd, "Str", "DarkMode_CFD", "Ptr", 0)

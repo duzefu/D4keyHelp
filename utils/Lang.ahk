@@ -53,6 +53,12 @@ global LANG_TABLE := Map(
     "skill.4",                      {zh: "技能四：", en: "Skill 4:"},
     "skill.left",                   {zh: "左键技能：", en: "LMB skill:"},
     "skill.right",                  {zh: "右键技能：", en: "RMB skill:"},
+    "mouseKey.lbutton",             {zh: "鼠标左键", en: "LMB"},
+    "mouseKey.rbutton",             {zh: "鼠标右键", en: "RMB"},
+    "mouseKey.tip",                 {zh: "下拉选择鼠标左键/右键，或直接输入键名（如 5、F、XButton1）"
+                                   , en: "Pick LMB/RMB from the list, or type a key name (e.g. 5, F, XButton1)"},
+    "mouseKey.invalid",             {zh: "「{1}」不是有效的按键名，已恢复为 {2}"
+                                   , en: "`"{1}`" is not a valid key name, reverted to {2}"},
 
     ; ---------- 技能策略 ----------
     "strategy.off",                 {zh: "禁用", en: "Off"},

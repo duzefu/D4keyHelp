@@ -19,11 +19,15 @@ CreateSkillRows() {
         ; 行标签
         myGui.AddText("x25 y" (yPos + 4) " w95 right" MUI_CardBg, skillLabels[row])
 
-        ; 快捷键（技能1-4用Hotkey，左右键用禁用的Edit）
+        ; 快捷键（技能1-4用Hotkey；左右键用可输入的下拉框：下拉选鼠标左/右键，或直接输入键名）
         if (row <= 4) {
             keyCtrl := myGui.AddHotkey("x130 y" yPos " w75", defaultKeys[row])
         } else {
-            keyCtrl := myGui.AddEdit("x130 y" yPos " w75 Disabled", defaultKeys[row])
+            keyCtrl := myGui.AddComboBox("x130 y" yPos " w75", GetMouseSlotKeyNames())
+            SetMouseSlotKey(keyCtrl, defaultKeys[row])
+            keyCtrl.ToolTip := L("mouseKey.tip")
+            keyCtrl.OnEvent("Change", OnMouseSlotKeyChange)
+            keyCtrl.OnEvent("LoseFocus", OnMouseSlotKeyBlur)
         }
 
         ; 策略下拉框（禁用/连点/维持BUFF/按住；名称随语言，存盘用的是序号）
@@ -52,11 +56,11 @@ CreateSkillRows() {
         }
 
         ; 存储到对应的控件集合
+        ; 注册按键变更的自动保存事件
+        keyCtrl.OnEvent("Change", ScheduleAutoSave)
+
         if (row <= 4) {
             skillControls[row] := rowData
-
-            ; 注册自动保存事件
-            skillControls[row].key.OnEvent("Change", ScheduleAutoSave)
         } else if (row = 5) {
             mouseControls := {}
             mouseControls.left := rowData

@@ -56,6 +56,34 @@ try {
     Append "血量检测开关回调异常: " err.Message " @" err.File ":" err.Line
 }
 try {
+    ; 左右键技能行的按键框：下拉项 / 键盘键 / 鼠标侧键 / 无效输入
+    ctrl := mouseControls.left.key
+    got := []
+    for key in ["5", "RButton", "xbutton1", "LButton"] {
+        SetMouseSlotKey(ctrl, key)
+        got.Push(ResolveMouseSlotKey(ctrl))
+    }
+    ctrl.Text := "不存在的键"
+    got.Push(ResolveMouseSlotKey(ctrl))
+    ; 输入任意字符串后：运行/存盘仍用最后一次有效按键，失去焦点时恢复显示
+    SetMouseSlotKey(ctrl, "5")
+    ctrl.Text := "abc"
+    OnMouseSlotKeyChange(ctrl)
+    got.Push(GetMouseSlotKey(ctrl))
+    OnMouseSlotKeyBlur(ctrl)
+    got.Push(ctrl.Text)
+    SetMouseSlotKey(ctrl, "LButton")
+    joined := ""
+    for k in got
+        joined .= k "|"
+    if (joined = "5|RButton|XButton1|LButton||5|5|")
+        Append "左右键按键解析正常"
+    else
+        Append "左右键按键解析失败: " joined
+} catch as err {
+    Append "左右键按键解析异常: " err.Message " @" err.File ":" err.Line
+}
+try {
     SaveSettings()
     Append "保存设置正常"
 } catch as err {

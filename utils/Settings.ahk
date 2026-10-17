@@ -352,6 +352,10 @@ SaveMouseSettings(file, prefix := "") {
     global mouseControls, mouseAutoMove, pauseOnClick
     section := prefix . "Mouse"
 
+    ; 左右键技能行的按键（存键名；输入无效时存最后一次有效按键，与运行时一致）
+    for slot, keyName in Map("left", "LeftClickKey", "right", "RightClickKey")
+        IniWrite(GetMouseSlotKey(mouseControls.%slot%.key), file, section, keyName)
+
     ; 保存左键设置（策略式）
     IniWrite(mouseControls.left.strategy.Value, file, section, "LeftClickStrategy")
     IniWrite(mouseControls.left.interval.Value, file, section, "LeftClickInterval")
@@ -557,9 +561,16 @@ LoadSkillSettings(file, prefix := "") {
  */
 LoadMouseSettings(file, prefix := "") {
     global mouseControls, mouseAutoMove, mouseAutoMoveEnabled, pauseOnClick, pauseOnClickEnabled
+    global MOUSE_SLOT_DEFAULTS
     section := prefix . "Mouse"
 
     try {
+        ; 左右键技能行的按键（旧配置没有这两项，默认就是鼠标左/右键）
+        for slot, keyName in Map("left", "LeftClickKey", "right", "RightClickKey") {
+            key := GetKeyName(IniRead(file, section, keyName, MOUSE_SLOT_DEFAULTS[slot]))
+            SetMouseSlotKey(mouseControls.%slot%.key, key != "" ? key : MOUSE_SLOT_DEFAULTS[slot])
+        }
+
         ; 加载左键设置（兼容旧格式）
         leftStrategy := ReadStrategyValue(file, section, "LeftClick", "左键")
         mouseControls.left.interval.Value := IniRead(file, section, "LeftClickInterval", 80)

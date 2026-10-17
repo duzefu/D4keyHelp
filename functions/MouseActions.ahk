@@ -30,85 +30,151 @@ InterruptibleSleep(duration) {
     return true
 }
 
-/**
- * 带可选Shift修饰的鼠标点击
- * @param {String} button - "" 表示左键，"right" 表示右键
- */
-ClickWithShift(button := "") {
-    global shiftEnabled
+; ---------- 左右键技能行的按键 ----------
+; 左右键技能行的按键框是可输入的下拉框（ComboBox）：
+;   下拉列表里的两项代表鼠标左键 / 右键，也可以直接输入任意键名（如 5、F、XButton1），
+;   用于把游戏里的左右键技能改绑到键盘后照样由这一行驱动，想绑回鼠标时从下拉里重新选即可。
+; 存盘存的是 AHK 键名（LButton / RButton / 5 …），与界面语言无关。
+; 输入框里可能是任意字符串，所以每个框记着"最后一次有效按键"（ctrl.lastValidKey）：
+;   失去焦点时输入无效就恢复成它并提示；运行与存盘也都以它兜底，保证三者一致。
+global MOUSE_SLOT_KEYS := ["LButton", "RButton"]   ; 下拉列表各项对应的键名
+global MOUSE_SLOT_DEFAULTS := Map("left", "LButton", "right", "RButton")
 
-    if (shiftEnabled) {
-        Send "{Shift down}"
-        Sleep 10
-        Click button
-        Sleep 10
-        Send "{Shift up}"
-    } else {
-        Click button
-    }
+/**
+ * 左右键技能行下拉列表的显示文字（顺序与 MOUSE_SLOT_KEYS 一致）
+ */
+GetMouseSlotKeyNames() {
+    return [L("mouseKey.lbutton"), L("mouseKey.rbutton")]
 }
 
 /**
- * 鼠标左键点击
+ * 把按键框里的内容解析成 AHK 键名
+ * @param {Gui.ComboBox} ctrl - 左右键技能行的按键框
+ * @returns {String} 规范化后的键名；输入无法识别时返回 ""
+ */
+ResolveMouseSlotKey(ctrl) {
+    global MOUSE_SLOT_KEYS
+
+    ; 按文字判断而不是 ctrl.Value：程序改 Text 时下拉的选中项不会跟着清掉
+    text := Trim(ctrl.Text)
+    if (text = "")
+        return ""
+
+    ; 选中了下拉项（或手动输入了与下拉项相同的文字）
+    for i, name in GetMouseSlotKeyNames() {
+        if (text = name)
+            return MOUSE_SLOT_KEYS[i]
+    }
+
+    ; GetKeyName 能识别的才是有效键名，顺便统一大小写（lbutton -> LButton）
+    return GetKeyName(text)
+}
+
+/**
+ * 把键名填回按键框：鼠标左右键选中对应下拉项，其他键直接显示键名
+ * @param {Gui.ComboBox} ctrl - 左右键技能行的按键框
+ * @param {String} key - AHK 键名
+ */
+SetMouseSlotKey(ctrl, key) {
+    global MOUSE_SLOT_KEYS
+
+    for i, name in MOUSE_SLOT_KEYS {
+        if (key = name) {
+            ctrl.Choose(i)
+            ctrl.lastValidKey := key
+            return
+        }
+    }
+    ctrl.Choose(0)
+    ctrl.Text := key
+    ctrl.lastValidKey := key
+}
+
+/**
+ * 取左右键技能行当前生效的按键：输入有效用输入值，否则用最后一次有效按键
+ * @param {Gui.ComboBox} ctrl - 左右键技能行的按键框
+ * @returns {String} AHK 键名
+ */
+GetMouseSlotKey(ctrl) {
+    key := ResolveMouseSlotKey(ctrl)
+    return (key != "") ? key : ctrl.lastValidKey
+}
+
+/**
+ * 按键框内容变化：输入有效时记为最后一次有效按键（输入中途的无效内容不覆盖它）
+ */
+OnMouseSlotKeyChange(ctrl, *) {
+    key := ResolveMouseSlotKey(ctrl)
+    if (key != "")
+        ctrl.lastValidKey := key
+}
+
+/**
+ * 按键框失去焦点：输入无效则恢复为最后一次有效按键并提示，有效则规范显示（xbutton1 -> XButton1）
+ */
+OnMouseSlotKeyBlur(ctrl, *) {
+    global statusBar
+
+    key := ResolveMouseSlotKey(ctrl)
+    if (key = "") {
+        invalidText := ctrl.Text
+        key := ctrl.lastValidKey
+        if (statusBar != "")
+            statusBar.Text := L("mouseKey.invalid", invalidText, key)
+        DebugLog("左右键技能按键输入无效: " invalidText "，恢复为 " key)
+    }
+    SetMouseSlotKey(ctrl, key)
+}
+
+/**
+ * 鼠标左键技能（定时器回调）
  */
 PressLeftClick() {
-    global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD, SKILL_MODE_BUFF
-    global mouseHoldStates
-
-    if (!isRunning || isPaused || mouseControls.left.strategy.Value <= 1)
-        return
-
-    mouseMode := mouseControls.left.strategy.Value - 1
-
-    if (mouseMode = SKILL_MODE_BUFF) {
-        if ShouldSkipBuffPress("left")
-            return
-        ClickWithShift()
-        DebugLog("点击鼠标左键(维持BUFF模式)", 2)
-    } else if (mouseMode = SKILL_MODE_HOLD) {
-        if (!mouseHoldStates["left"]) {
-            if (shiftEnabled)
-                Send "{Shift down}"
-
-            Click "down left"
-            mouseHoldStates["left"] := true
-            DebugLog("按住鼠标左键", 2)
-        }
-    } else {
-        ClickWithShift()
-        DebugLog("点击鼠标左键", 2)
-    }
+    PressMouseSlot("left")
 }
 
 /**
- * 鼠标右键点击
+ * 鼠标右键技能（定时器回调）
  */
 PressRightClick() {
+    PressMouseSlot("right")
+}
+
+/**
+ * 左右键技能行的按键动作
+ * 按键可以是鼠标键也可以是键盘键，统一用 Send 发送（Send "{LButton}" 与 Click 等效）
+ * @param {String} slot - "left" / "right"
+ */
+PressMouseSlot(slot) {
     global isRunning, isPaused, mouseControls, shiftEnabled, SKILL_MODE_HOLD, SKILL_MODE_BUFF
     global mouseHoldStates
 
-    if (!isRunning || isPaused || mouseControls.right.strategy.Value <= 1)
+    control := mouseControls.%slot%
+    if (!isRunning || isPaused || control.strategy.Value <= 1)
         return
 
-    mouseMode := mouseControls.right.strategy.Value - 1
+    key := GetMouseSlotKey(control.key)
+
+    mouseMode := control.strategy.Value - 1
 
     if (mouseMode = SKILL_MODE_BUFF) {
-        if ShouldSkipBuffPress("right")
+        if ShouldSkipBuffPress(slot)
             return
-        ClickWithShift("right")
-        DebugLog("点击鼠标右键(维持BUFF模式)", 2)
+        SendKey(key)
+        DebugLog(slot "键技能按下(维持BUFF模式): " key, 2)
     } else if (mouseMode = SKILL_MODE_HOLD) {
-        if (!mouseHoldStates["right"]) {
+        if (mouseHoldStates[slot] = "") {
             if (shiftEnabled)
                 Send "{Shift down}"
 
-            Click "down right"
-            mouseHoldStates["right"] := true
-            DebugLog("按住鼠标右键", 2)
+            Send "{" key " down}"
+            ; 记下按住的是哪个键，释放时按它松开（期间改了按键也不会卡键）
+            mouseHoldStates[slot] := key
+            DebugLog(slot "键技能按住: " key, 2)
         }
     } else {
-        ClickWithShift("right")
-        DebugLog("点击鼠标右键", 2)
+        SendKey(key)
+        DebugLog(slot "键技能按下: " key, 2)
     }
 }
 
@@ -118,16 +184,13 @@ PressRightClick() {
 ResetMouseButtonStates() {
     global mouseHoldStates
 
-    if (mouseHoldStates["left"]) {
-        Click "up left"
-        mouseHoldStates["left"] := false
-        DebugLog("释放鼠标左键", 2)
-    }
-
-    if (mouseHoldStates["right"]) {
-        Click "up right"
-        mouseHoldStates["right"] := false
-        DebugLog("释放鼠标右键", 2)
+    for slot in ["left", "right"] {
+        key := mouseHoldStates[slot]
+        if (key != "") {
+            Send "{" key " up}"
+            mouseHoldStates[slot] := ""
+            DebugLog(slot "键技能释放: " key, 2)
+        }
     }
 
     Send "{Shift up}"
