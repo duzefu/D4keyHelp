@@ -42,7 +42,7 @@ Grab `D4keyHelp.exe` from [Releases](https://github.com/duzefu/D4keyHelp/release
 ### Option 2: Run from source
 
 1. Install the **latest AutoHotkey v2.0** (note: **not** the more common v1.3, the two are incompatible)
-2. Double-click `macro_script_v3.ahk`
+2. Double-click `D4keyHelp.ahk`
 
 ### Three steps to get going
 

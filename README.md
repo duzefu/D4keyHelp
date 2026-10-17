@@ -42,7 +42,7 @@ https://github.com/user-attachments/assets/26f0ba7f-a3bc-4468-b734-fce76c4f680c
 ### 方式二：运行源码
 
 1. 安装 **最新版 AutoHotkey v2.0**（注意：**不是**常见的 v1.3，二者不兼容）
-2. 双击 `macro_script_v3.ahk` 运行
+2. 双击 `D4keyHelp.ahk` 运行
 
 ### 三步上手
 

@@ -1,4 +1,4 @@
-# Build D4keyHelp.exe from macro_script_v3.ahk when a version tag is pushed.
+# Build D4keyHelp.exe from D4keyHelp.ahk when a version tag is pushed.
 # Requires windows-latest (Ahk2Exe is Windows-only).
 name: Release
 
@@ -20,7 +20,7 @@ jobs:
       - name: Compile with Ahk2Exe (AHK v2)
         uses: benmusson/ahk2exe-action@v1
         with:
-          in: .\macro_script_v3.ahk
+          in: .\D4keyHelp.ahk
           out: .\dist\D4keyHelp.exe
           target: x64
           compression: none

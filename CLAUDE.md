@@ -15,14 +15,11 @@ D4KeyHelp是一个为暗黑破坏神4设计的图形化宏工具，具有可自�
 
 **运行应用程序：**
 ```bash
-# 推荐：使用重构后的模块化版本
-macro_script_v3.ahk
-
-# 传统方式：单文件版本
-macro_script_v2.ahk
+# 源码方式：主程序入口
+D4keyHelp.ahk
 
 # 编译版本：使用可执行文件
-macro_script_v2.exe
+D4keyHelp.exe
 ```
 
 **无构建命令** - 直接运行 AutoHotkey 脚本。
@@ -43,10 +40,9 @@ AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
 ## 架构和核心组件
 
 ### 主应用文件
-- `macro_script_v3.ahk` - 重构后的模块化主入口文件（推荐使用）
-- `macro_script_v2.ahk` - 传统单文件版本（1200+行）
+- `D4keyHelp.ahk` - 模块化主入口文件（与项目同名）
 
-### 模块化文件结构（v3）
+### 模块化文件结构
 ```
 ├── core/                    # 核心功能模块
 │   ├── GlobalVars.ahk      # 全局变量定义
@@ -96,22 +92,22 @@ AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
 
 ### 关键功能区域
 
-**技能系统（`macro_script_v2.ahk:397-456`）：**
+**技能系统（`functions/SkillSystem.ahk`）：**
 - 三种模式：连点、维持BUFF、按住
 - 像素颜色检测用于BUFF状态检查
 - 独立技能定时器管理
 
-**鼠标控制（`macro_script_v2.ahk:504-601`）：**
+**鼠标控制（`functions/MouseActions.ahk`）：**
 - 左右键自动化，支持模式切换
 - 持续鼠标动作的按住状态跟踪
 - Shift修饰键集成
 
-**窗口管理（`macro_script_v2.ahk:225-256`）：**
+**窗口管理（`core/WindowManager.ahk`）：**
 - 暗黑4活动窗口检测
 - 窗口焦点变化时自动暂停/恢复
 - 窗口状态与宏状态的状态同步
 
-**鼠标移动自动化（`macro_script_v2.ahk:1126-1158`）：**
+**鼠标移动自动化（`functions/MouseActions.ahk` 的 `MoveMouseToNextPoint()`）：**
 - 六点屏幕移动模式
 - 屏幕分辨率自适应定位
 - 可配置移动间隔

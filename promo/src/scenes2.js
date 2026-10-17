@@ -440,7 +440,7 @@ scene('howto', {
     });
     revealText(ctx, 'GET STARTED IN THREE STEPS', 960, 208, lt - .4, { font: font('cinzel', 20, 700), ls: 10, fill: PAL.goldDim, stagger: .015, dur: .4, dy: 6 });
     const cards = [
-      { t0: 1.0, n: '1', title: '下载运行', l1: 'Releases 下载 D4keyHelp.exe', l2: '双击运行，无需安装 AHK', l3: '源码版：AutoHotkey v2 运行 macro_script_v3.ahk' },
+      { t0: 1.0, n: '1', title: '下载运行', l1: 'Releases 下载 D4keyHelp.exe', l2: '双击运行，无需安装 AHK', l3: '源码版：AutoHotkey v2 运行 D4keyHelp.ahk' },
       { t0: 3.4, n: '2', title: '配置策略', l1: '为技能选「策略」与「执行间隔」', l2: '修改即自动保存', l3: '' },
       { t0: 5.8, n: '3', title: '一键开战', l1: '切回游戏，按 F1 开始', l2: '再按一次即停止', l3: '启停键可改为鼠标中键 / 侧键' },
     ];
