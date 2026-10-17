@@ -24,18 +24,57 @@ D4keyHelp.exe
 
 **无构建命令** - 直接运行 AutoHotkey 脚本。
 
-**测试（tests/）：**
+**测试（tests/）：推荐用 `tests/run.sh`，它把三步串起来并自动探测解释器路径：**
 ```bash
-# 回归测试：用四张 2K 参考截图的真实像素验证血球识别（无需启动游戏）
-python tests/ExportGlobeWindows.py      # 生成 tests/data/*.bin（需 Pillow，截图为本地文件）
-AutoHotkey64.exe tests/HealthGlobeTest.ahk   # 结果写入 tests/result.txt
-
-# 冒烟测试：加载全部模块并创建界面，1.5 秒后自动退出
-AutoHotkey64.exe tests/SmokeTest.ahk    # 结果写入 tests/smoke_result.txt
+bash tests/run.sh                 # 依次跑：加载期校验 → 冒烟测试 → 血球回归
+bash tests/run.sh validate        # 只跑加载期校验（最快，改完立刻自检用）
+bash tests/run.sh smoke           # 只跑冒烟测试
+bash tests/run.sh globe           # 只跑血球回归
+bash tests/run.sh globe --export  # 血球回归前重新生成 tests/data/*.bin
 ```
+退出码：`0` 全部通过，`1` 有失败项，`2` 环境不满足（找不到解释器等）。
+解释器可用 `AHK=/path/to/AutoHotkey64.exe bash tests/run.sh` 覆盖。
+
+手工单独跑某个脚本也可以，但必须注意下面几点（`run.sh` 已经处理好）：
+
+- **解释器不在 PATH 上**，`AutoHotkey64.exe` 直接敲会 command not found；
+  实际路径是 `C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe`。
+- **开关要写双斜杠**。MSYS/Git-Bash 会把 `/validate` 改写成 Windows 路径
+  （变成 `C:/Program Files/Git/validate`），AHK 收到的是个不存在的脚本名而不是开关，
+  于是脚本被真的执行、进程挂住不退出。`MSYS_NO_PATHCONV=1` 也能挡住改写，但它同时会
+  把 `/c/...` 形式的脚本路径也一并破坏，所以统一用 `//validate` 这种双斜杠写法。
+- **加载期报错时 AHK 默认弹对话框等用户点确定**，非交互环境下会永久挂住。
+  实测（2.0.2）：`//ErrorStdOut` 只对**语法错误**和 **`#Include` 找不到目标**有效
+  （消息发到 stderr、进程正常退出、退出码 2）；而**调用不存在的函数**这类加载期错误
+  仍会弹窗（`try/catch` 也拦不住，因为它在加载阶段就报错），此时只能靠外层 `timeout` 兜底
+  （`run.sh` 里默认 30 秒，校验步骤单独收紧到 10 秒）。
+- **开关必须写在脚本前面**。AHK 用法是 `AutoHotkey.exe [开关...] [脚本] [脚本参数...]`；
+  写成 `AutoHotkey64.exe script.ahk //validate` 时开关会被当成**传给脚本的参数**而静默失效，
+  脚本被真的执行——对 `D4keyHelp.ahk` 就是启动整个宏程序并挂住。
+
+```bash
+AHK="/c/Program Files/AutoHotkey/v2/AutoHotkey64.exe"
+"$AHK" //validate //ErrorStdOut D4keyHelp.ahk   # 退出码 0=能加载，非 0=有加载期错误
+python tests/ExportGlobeWindows.py              # 生成 tests/data/*.bin（需 Pillow，截图为本地文件）
+"$AHK" tests/HealthGlobeTest.ahk                # 结果写入 tests/result.txt
+"$AHK" tests/SmokeTest.ahk                      # 结果写入 tests/smoke_result.txt
+```
+
+`//validate` 查的是**加载期**问题（语法错误、`#Include` 目标不存在、调用了不存在的函数），
+不做运行时检查（例如类型不匹配、数组越界要等真跑到那行才知道）。
+好处是极快（约 0.1 秒）且不创建界面，适合改完代码立刻自检。
+注意：碰到「调用不存在的函数」这类错误它会弹窗卡住（见上文），
+所以手工敲命令时也建议套一层 `timeout 30`。
+
+注意 `python` 与 `python3` 不是同一个解释器：本机 `python`(3.14) 有 Pillow，
+`python3` 是 WindowsApps 里的 3.13、**没有** Pillow，所以生成 `*.bin` 要用 `python`
+（`run.sh` 会自动挑带 Pillow 的那个）。
 
 运行测试前先确认没有正在跑的应用实例（`#SingleInstance` 相关行为），且测试会创建测试目录下的
 `settings.ini`/`debugd4.log`，不会碰用户配置。
+
+**冒烟测试的退出码不可信**：`SmokeTest.ahk` 内部用 `try/catch` 兜住异常，进程退出码恒为 0，
+所以只能看 `tests/smoke_result.txt` 里有没有「失败」「异常」字样（`run.sh` 就是这么判的）。
 
 ## 架构和核心组件
 
